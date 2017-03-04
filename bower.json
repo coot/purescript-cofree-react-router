@@ -1,0 +1,27 @@
+{
+  "name": "purescript-thermite-router",
+  "authors": [
+    "Marcin Szamotulski <coot@riseup.net>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "purescript-thermite": "^3.2.1",
+    "purescript-free": "^3.4.0",
+    "purescript-routing": "^4.0.0",
+    "purescript-prelude": "^2.5.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^2.0.0",
+    "purescript-test-unit": "^10.1.0"
+  }
+}
