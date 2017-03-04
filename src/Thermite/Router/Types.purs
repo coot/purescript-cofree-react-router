@@ -24,6 +24,8 @@ instance showHash :: Show Hash where
 
 derive instance eqHash :: Eq Hash
 
-type Route = { path :: Array PathPart, query :: Query, hash :: Hash }
+type Route = { path:: Array PathPart, query:: Query, hash:: Hash }
 
-type RouteData a =  { args :: a, query :: Query, hash :: Hash }
+type RouteData =  { args:: StrMap String, query:: Query, hash:: Hash }
+
+type UrlPattern = String
