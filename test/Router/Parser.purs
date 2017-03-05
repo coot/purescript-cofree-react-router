@@ -5,7 +5,7 @@ module Test.Router.Parser (
 import Prelude
 import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), snd)
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 
@@ -61,7 +61,7 @@ testSuite =
                     expected = SM.fromFoldable [Tuple "user_id" "1", Tuple "book_id" "2"]
                  in case res of
                          Nothing -> failure ("url: " <> url <> " did not match: " <> pat)
-                         Just rd -> assert ("got wrong args for url: " <> url <> ": " <> show rd) $
+                         Just (Tuple _ rd) -> assert ("got wrong args for url: " <> url <> ": " <> show rd) $
                             case rd of
                                 RouteData args _ _ -> args == expected
                                 

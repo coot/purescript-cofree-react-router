@@ -1,11 +1,12 @@
 module React.Router.Types where
 
-import Prelude ((<>), class Eq, class Show, show)
+import Prelude ((<>), class Eq, class Show, class Semigroup, append, show)
 import Control.Comonad.Cofree (Cofree)
 import Data.Dynamic (Dynamic)
 import Data.StrMap (StrMap())
 import Data.Newtype (class Newtype)
 import Data.Typeable (class Typeable, mkTyRep)
+import React (ReactClass)
 
 newtype PathPart = PathPart String
 
@@ -31,22 +32,28 @@ type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
 
 data RouteData = RouteData (StrMap String) Query Hash
 
+instance semigroupRouteData :: Semigroup RouteData where
+    append (RouteData rd q h) (RouteData rd' q' h') = RouteData (rd <> rd') q' h'
+
 instance showRouteData :: Show RouteData where
     show (RouteData a q h) = "RouteData " <> show a <> " " <> show q <> " " <> show h
 
-instance typeableRouteData :: Typeable RouteData where
-    typeOf _ = mkTyRep "React.Router.Types" "RouteData"
-
 type URLPattern = String
 
+newtype RouteClass = RouteClass (ReactClass RouteData)
+
+instance newtypeRouteClass :: Newtype RouteClass (ReactClass RouteData) where
+    unwrap (RouteClass cls) = cls
+    wrap = RouteClass
+
 -- | Route type
-data Route = Route URLPattern Dynamic
+data Route = Route URLPattern RouteClass
 
 getURLPattern :: Route -> URLPattern
-getURLPattern (Route pat dyn) = pat
+getURLPattern (Route pat _) = pat
 
-getDynamic :: Route -> Dynamic
-getDynamic (Route pat dyn) = dyn
+getClass :: Route -> RouteClass
+getClass (Route _ cls) = cls
 
 -- | Router type
 type Router = Cofree Array Route

@@ -3,7 +3,7 @@ module React.Router.Parser
     , match
     ) where
 
-import Prelude ((<<<), (<=), (==), (/=), (<$>), (<*>), (<>), ($), bind, id, map)
+import Prelude ((<<<), (>), (<=), (==), (<$>), (<*>), (<>), ($), bind, id, map)
 import Control.MonadPlus (guard)
 import Data.Array as A
 import Data.Either (fromRight)
@@ -48,11 +48,11 @@ parse decode url = A.foldl go { path: [], query: SM.empty, hash: Hash "" } (spli
             _ -> r { path = r.path <> ((PathPart <<< decode) <$> S.split (S.Pattern "/") p) }
 
 
-match :: URLPattern -> URL -> Maybe (RouteData)
-match pat r = 
-    if  A.length patPath /= A.length r.path
+match :: URLPattern -> URL -> Maybe (Tuple URL RouteData)
+match pat url = 
+    if  A.length patPath > A.length url.path
         then Nothing
-        else maybe Nothing wrap $ go (A.zip patPath r.path) SM.empty
+        else maybe Nothing wrap $ go (A.zip patPath url.path) SM.empty
     where
         patPath :: Array PathPart
         patPath = (parse id pat).path
@@ -70,5 +70,5 @@ match pat r =
               head = A.head ps
               tail = A.tail ps
               
-        wrap :: SM.StrMap String -> Maybe RouteData
-        wrap args = Just $ RouteData args r.query r.hash
+        wrap :: SM.StrMap String -> Maybe (Tuple URL RouteData)
+        wrap args = Just $ Tuple (url { path = A.drop (A.length patPath) url.path }) (RouteData args url.query url.hash)

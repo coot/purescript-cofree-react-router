@@ -1,17 +1,17 @@
 module React.Router where
 
-import Prelude (($), id)
+import Prelude (($), (==), (>), (-), id, map)
 import Control.Comonad.Cofree (head, tail)
 import Data.Array as A
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), fromJust, maybe)
+import Data.Newtype (unwrap)
+import Data.Tuple (Tuple(..), fst, snd)
 import React (ReactClass, ReactElement, createElement)
 import Global (decodeURIComponent)
+import Partial.Unsafe (unsafePartial)
 
-import Data.Dynamic (Dynamic, fromDynamic, toDynamic)
-
-import React.Router.Types (Route, Router, URL, getURLPattern, getDynamic)
+import React.Router.Types (Route, Router, URL, RouteData, RouteClass, getURLPattern, getClass)
 import React.Router.Parser (match, parse)
-import Data.Typeable (class Typeable, class Typeable1, mkTyRep)
 
 -- routeSpec :: forall eff state props action. Route -> T.Spec eff (Tuple RouterState state) action
 
@@ -34,38 +34,58 @@ import Data.Typeable (class Typeable, class Typeable1, mkTyRep)
   - this is an annotated tree!
   --}
 
-newtype ReactClass' props = RC (ReactClass props)
+type RouteArgs = { routeData :: RouteData, children :: Array ReactElement }
 
-instance typeable1ReactClass' :: Typeable1 ReactClass' where
-    typeOf1 _ = mkTyRep "React.Router" "ReactClass'"
-
-rr :: forall props. Typeable props => ReactClass props -> Dynamic
-rr cls = toDynamic (RC cls :: ReactClass' props)
-
-re :: forall props. Typeable props => Dynamic -> props -> Array ReactElement
-re dyn props = maybe [] (\cls -> [createElement cls props []]) $ fromDynamic dyn
-
-runRouter ::  String -> Router -> Array ReactElement
-runRouter urlStr router = stepBF [router] [router]
+runRouter ::  String -> Router -> Maybe (Tuple RouteClass RouteArgs)
+runRouter urlStr router = combine $ stepBF [] [Tuple url router] []
     where
         url :: URL
         url = parse decodeURIComponent urlStr
 
-        check :: Route -> Maybe (Array ReactElement)
-        check route =
-            case match (getURLPattern route) url of
+        check :: Route -> URL -> Maybe (Tuple URL (Tuple RouteClass RouteArgs))
+        check route url1 =
+            case match (getURLPattern route) url1 of
                 Nothing -> Nothing
-                Just rd -> Just $ re (getDynamic route) rd
+                Just (Tuple url2 routeData) -> Just $ Tuple url2 (Tuple (getClass route) ({ routeData, children: [] } :: RouteArgs))
 
         -- breadth first search
-        stepBF :: Array Router -> Array Router -> Array ReactElement
-        stepBF rs rs' =
+        stepBF :: Array (Tuple RouteClass RouteArgs) -> Array (Tuple URL Router) -> Array (Tuple URL Router) -> Array (Tuple RouteClass RouteArgs)
+        stepBF cnt rs rs' =
             case A.head rs of
-                 Nothing -> let rs1 = A.concatMap tail rs'
-                             in stepBF rs1 rs1
-                 Just r -> case check (head r) of
-                    Just res -> res
-                    Nothing -> stepBF (maybe [] id $ A.tail rs) rs'
+                 Nothing -> let rs1 = map (map tail) rs' :: Array (Tuple URL (Array Router))
+                                rs2 = A.concatMap (\(Tuple a bs) -> map (\b -> Tuple a b) bs) rs1 :: Array (Tuple URL Router)
+                             in stepBF cnt rs2 []
+                 Just (Tuple url' r) -> case check (head r) url' of
+                    Just (Tuple url'' res') -> 
+                        if A.length url''.path == 0
+                           then A.snoc cnt res'
+                           else stepBF cnt [] (A.snoc rs' (Tuple url'' r))
+                    Nothing -> stepBF cnt (maybe [] id $ A.tail rs) rs'
+
+        combine :: Array (Tuple RouteClass RouteArgs) -> Maybe (Tuple RouteClass RouteArgs)
+        combine rps | A.length rps == 1 = A.head rps
+        combine rps | A.length rps  > 2 = combine $ A.snoc (A.take (len - 3) rps) newLast
+          where
+              len = A.length rps
+              t = unsafePartial $ fromJust (rps A.!! (len - 2))
+
+              rCls :: RouteClass
+              rCls = fst t
+
+              routeArgs :: RouteArgs
+              routeArgs = snd t
+
+              t' = unsafePartial $ fromJust (A.last rps)
+
+              cls' :: ReactClass RouteData
+              cls' = unwrap $ fst t'
+
+              routeArgs' :: RouteArgs
+              routeArgs' = snd t'
+
+              newLast :: Tuple RouteClass RouteArgs
+              newLast = Tuple rCls (routeArgs { children = [ createElement cls' (routeArgs'.routeData)  (routeArgs'.children) ] })
+        combine _ = Nothing
 
 
 -- | routerSpec which runs `runRouter` computation on every route change
