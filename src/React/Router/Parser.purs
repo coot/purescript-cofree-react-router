@@ -1,4 +1,4 @@
-module Thermite.Router.Parser
+module React.Router.Parser
     ( parse
     , match
     ) where
@@ -16,7 +16,7 @@ import Data.Tuple (Tuple(..))
 import Data.Traversable (traverse)
 import Partial.Unsafe (unsafePartial)
 
-import Thermite.Router.Types (Route, PathPart(..), Query, Hash(..), UrlPattern, RouteData)
+import React.Router.Types (URL, PathPart(..), Query, Hash(..), URLPattern, RouteData(..))
 
 parseQuery :: (String -> String) -> String -> Maybe Query
 parseQuery decode str = do
@@ -35,10 +35,10 @@ split :: String -> Array String
 split url = Reg.split reg url
     where reg = unsafePartial $ fromRight $ Reg.regex "(?=[?#])" Reg.global
 
-parse :: (String -> String) -> String -> Route
+parse :: (String -> String) -> String -> URL
 parse decode url = A.foldl go { path: [], query: SM.empty, hash: Hash "" } (split url) 
   where
-      go :: Route -> String -> Route
+      go :: URL -> String -> URL
       go r p = 
           case S.take 1 p of
             "?" -> case (parseQuery decode $ S.drop 1 p) of
@@ -48,7 +48,7 @@ parse decode url = A.foldl go { path: [], query: SM.empty, hash: Hash "" } (spli
             _ -> r { path = r.path <> ((PathPart <<< decode) <$> S.split (S.Pattern "/") p) }
 
 
-match :: UrlPattern -> Route -> Maybe (RouteData)
+match :: URLPattern -> URL -> Maybe (RouteData)
 match pat r = 
     if  A.length patPath /= A.length r.path
         then Nothing
@@ -71,4 +71,4 @@ match pat r =
               tail = A.tail ps
               
         wrap :: SM.StrMap String -> Maybe RouteData
-        wrap args = Just { args: args, query: r.query, hash: r.hash }
+        wrap args = Just $ RouteData args r.query r.hash

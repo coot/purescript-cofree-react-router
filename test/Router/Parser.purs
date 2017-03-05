@@ -10,8 +10,8 @@ import Data.Tuple (Tuple(..))
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert)
 
-import Thermite.Router.Types (PathPart(..), Hash(..))
-import Thermite.Router.Parser (match, parse)
+import React.Router.Types (PathPart(..), Hash(..))
+import React.Router.Parser (match, parse)
 
 testSuite =
     suite "Router.Parser" do
