@@ -1,6 +1,6 @@
 module React.Router.Types where
 
-import Prelude ((<>), class Eq, class Show)
+import Prelude ((<>), class Eq, class Show, show)
 import Control.Comonad.Cofree (Cofree)
 import Data.Dynamic (Dynamic)
 import Data.StrMap (StrMap())
@@ -30,6 +30,9 @@ derive instance eqHash :: Eq Hash
 type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
 
 data RouteData = RouteData (StrMap String) Query Hash
+
+instance showRouteData :: Show RouteData where
+    show (RouteData a q h) = "RouteData " <> show a <> " " <> show q <> " " <> show h
 
 instance typeableRouteData :: Typeable RouteData where
     typeOf _ = mkTyRep "React.Router.Types" "RouteData"

@@ -3,16 +3,16 @@ module Test.Router.Parser (
   ) where
 
 import Prelude
-import Data.Array ((!!))
 import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
 import Data.Tuple (Tuple(..))
-import Test.Unit (failure, success, suite, test)
+import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 
-import React.Router.Types (PathPart(..), Hash(..))
+import React.Router.Types (PathPart(..), RouteData(..), Hash(..))
 import React.Router.Parser (match, parse)
 
+testSuite :: forall eff. TestSuite eff
 testSuite =
     suite "Router.Parser" do
         suite "parse" do
@@ -61,7 +61,10 @@ testSuite =
                     expected = SM.fromFoldable [Tuple "user_id" "1", Tuple "book_id" "2"]
                  in case res of
                          Nothing -> failure ("url: " <> url <> " did not match: " <> pat)
-                         Just args -> assert ("got wrong args for url: " <> url <> ": " <> show args.args ) $ args.args == expected
+                         Just rd -> assert ("got wrong args for url: " <> url <> ": " <> show rd) $
+                            case rd of
+                                RouteData args _ _ -> args == expected
+                                
 
             test "do not match paths" $ do
                 doNotMatch "/user/:user_id/lunch/:lunch_id" "/user/1/book/2"

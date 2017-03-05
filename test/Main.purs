@@ -9,7 +9,9 @@ import Test.Unit.Main (runTest)
 import Test.Unit.Console (TESTOUTPUT)
 
 import Test.Router.Parser (testSuite) as Parser
+import Test.Router (testSuite) as Router
 
 main :: forall eff. Eff ( avar :: AVAR, console :: CONSOLE, testOutput :: TESTOUTPUT, err :: EXCEPTION | eff) Unit
 main = runTest do
     Parser.testSuite
+    Router.testSuite
