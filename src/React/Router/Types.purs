@@ -8,12 +8,14 @@ import Data.Newtype (class Newtype)
 import Data.Typeable (class Typeable, mkTyRep)
 import React (ReactClass)
 
+data Triple a b c = Triple a b c
+
 newtype PathPart = PathPart String
 
 derive instance newTypePathPart :: Newtype PathPart _
 
 instance showPathPart :: Show PathPart where
-    show (PathPart s) = "(PathPart " <> s <> ")"
+    show (PathPart s) = "(PathPart \"" <> s <> "\")"
 
 derive instance eqPathPart :: Eq PathPart
 
@@ -32,28 +34,34 @@ type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
 
 data RouteData = RouteData (StrMap String) Query Hash
 
-instance semigroupRouteData :: Semigroup RouteData where
-    append (RouteData rd q h) (RouteData rd' q' h') = RouteData (rd <> rd') q' h'
-
 instance showRouteData :: Show RouteData where
-    show (RouteData a q h) = "RouteData " <> show a <> " " <> show q <> " " <> show h
+    show (RouteData a q h) = "RouteData " <> " " <> show a <> " " <> show q <> " " <> show h
 
 type URLPattern = String
 
-newtype RouteClass = RouteClass (ReactClass RouteData)
+newtype RouteProps = RouteProps { id:: String, args:: StrMap String, query:: Query, hash:: Hash }
 
-instance newtypeRouteClass :: Newtype RouteClass (ReactClass RouteData) where
+newtype RouteClass = RouteClass (ReactClass RouteProps)
+
+instance newtypeRouteClass :: Newtype RouteClass (ReactClass RouteProps) where
     unwrap (RouteClass cls) = cls
     wrap = RouteClass
 
 -- | Route type
-data Route = Route URLPattern RouteClass
+-- | The first parameter is an identifier
+data Route = Route String URLPattern RouteClass
 
-getURLPattern :: Route -> URLPattern
-getURLPattern (Route pat _) = pat
+instance showRoute :: Show Route where
+    show (Route id_ url _) = "<Route " <> id_ <> ">"
 
-getClass :: Route -> RouteClass
-getClass (Route _ cls) = cls
+getRouteId :: Route -> String
+getRouteId (Route id_ _ _) = id_
+
+getRouteURLPattern :: Route -> URLPattern
+getRouteURLPattern (Route _ pat _) = pat
+
+getRouteClass :: Route -> RouteClass
+getRouteClass (Route _ _ cls) = cls
 
 -- | Router type
 type Router = Cofree Array Route

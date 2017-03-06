@@ -16,7 +16,7 @@ import Data.Tuple (Tuple(..))
 import Data.Traversable (traverse)
 import Partial.Unsafe (unsafePartial)
 
-import React.Router.Types (URL, PathPart(..), Query, Hash(..), URLPattern, RouteData(..))
+import React.Router.Types (URL, PathPart(PathPart), Query, Hash(Hash), URLPattern, RouteData(RouteData))
 
 parseQuery :: (String -> String) -> String -> Maybe Query
 parseQuery decode str = do
@@ -35,6 +35,10 @@ split :: String -> Array String
 split url = Reg.split reg url
     where reg = unsafePartial $ fromRight $ Reg.regex "(?=[?#])" Reg.global
 
+splitPath :: String -> Array String
+splitPath "/" = [""]
+splitPath s = S.split (S.Pattern "/") s
+
 parse :: (String -> String) -> String -> URL
 parse decode url = A.foldl go { path: [], query: SM.empty, hash: Hash "" } (split url) 
   where
@@ -45,7 +49,7 @@ parse decode url = A.foldl go { path: [], query: SM.empty, hash: Hash "" } (spli
                         Nothing -> r
                         Just q -> r { query = r.query <> q }
             "#" -> r { hash = Hash (decode $ S.drop 1 p) } 
-            _ -> r { path = r.path <> ((PathPart <<< decode) <$> S.split (S.Pattern "/") p) }
+            _ -> r { path = r.path <> ((PathPart <<< decode) <$> splitPath p) }
 
 
 match :: URLPattern -> URL -> Maybe (Tuple URL RouteData)

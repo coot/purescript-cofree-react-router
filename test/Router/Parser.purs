@@ -53,29 +53,32 @@ testSuite =
                     assert ("parsing url " <> url <> " returned hash: " <> show urlR.hash) $ urlR.hash == expected.hash
 
         suite "match" do
-            test "match paths" $
-                let url = "/user/1/book/2"
-                    urlR = parse id url
-                    pat = "/user/:user_id/book/:book_id"
-                    res = match pat urlR
-                    expected = SM.fromFoldable [Tuple "user_id" "1", Tuple "book_id" "2"]
-                 in case res of
-                         Nothing -> failure ("url: " <> url <> " did not match: " <> pat)
-                         Just (Tuple _ rd) -> assert ("got wrong args for url: " <> url <> ": " <> show rd) $
-                            case rd of
-                                RouteData args _ _ -> args == expected
-                                
+            test "match paths"
+                let
+                    match_ pat url expected = 
+                        let urlR = parse id url
+                            res = match pat urlR
+                        in case res of
+                                Nothing -> failure $ "pattern <" <> pat <> "> did not match url <" <> url <> ">"
+                                Just (Tuple _ rd) -> assert ("got wrong args for url: " <> url <> ": " <> show rd)
+                                    case rd of RouteData args _ _ -> args == expected
+                in do
+                    match_ "/" "/" (SM.empty)
+                    match_ "/" "/home" (SM.empty)
+                    match_ "user/:user_id" "user/2" (SM.singleton "user_id" "2")
+                    match_ "user" "user/2" (SM.empty)
+                    match_ "/user/:user_id/book/:book_id" "/user/1/book/2" (SM.fromFoldable [Tuple "user_id" "1", Tuple "book_id" "2"])
 
-            test "do not match paths" $ do
-                doNotMatch "/user/:user_id/lunch/:lunch_id" "/user/1/book/2"
-                doNotMatch "/user" "user"
-                doNotMatch "/user" "user/"
-                doNotMatch "/user/" "/user"
-                doNotMatch "/user/:user_id" "user/23"
-              where
-                  doNotMatch pat url =
-                    let urlR = parse id url
-                        res = match pat urlR
-                    in case res of
-                            Nothing -> success
-                            Just _ -> failure $ "url " <> url <> " matched " <> pat
+            test "do not match paths"
+                let doNotMatch pat url =
+                        let urlR = parse id url
+                            res = match pat urlR
+                        in case res of
+                                Nothing -> success
+                                Just _ -> failure $ "url <" <> url <> "> matched <" <> pat <> ">"
+                in do
+                    doNotMatch "/user/:user_id/lunch/:lunch_id" "/user/1/book/2"
+                    doNotMatch "/user" "user"
+                    doNotMatch "/user" "user/"
+                    doNotMatch "/user/" "/user"
+                    doNotMatch "/user/:user_id" "user/23"
