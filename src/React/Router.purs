@@ -68,23 +68,24 @@ runRouter urlStr router =
         -- breadth first search
         stepBF :: Array (Tuple RouteClass RouteProps) -> Array (Tuple URL Router) -> Array (Tuple URL Router) -> Array (Tuple RouteClass RouteProps)
         stepBF cnt rs rs' = do
-            case A.head rs of
+            case A.uncons rs of
                  Nothing -> let rs1 = map (map tail) rs' :: Array (Tuple URL (Array Router))
                                 rs2 = A.concatMap (\(Tuple a bs) -> map (\b -> Tuple a b) bs) rs1 :: Array (Tuple URL Router)
                              in if A.length rs2 == 0
                                    -- 404 error
                                    then []
                                    else stepBF cnt rs2 []
-                 Just (Tuple url' r) ->
+                 Just {head: (Tuple url' r), tail: rsTail} ->
                     -- match for route at the head of the router
                     case check (head r) url' of
                         -- match returns rest of the url and a tuple of RouteClass and RouteArgs
-                        Just (Tuple url'' res') -> 
+                        Just (Tuple url'' res') ->
                             if A.length url''.path == 0
                                 -- return the results
                                 then A.snoc cnt res'
-                                -- continue matching at one level deeper
-                                else stepBF cnt [] (A.snoc rs' (Tuple url'' r))
+                                -- continue matching and add a tuple of url and
+                                -- a router to match at one level deeper
+                                else stepBF cnt rsTail (A.snoc rs' (Tuple url'' r))
                         Nothing -> stepBF cnt (maybe [] id $ A.tail rs) rs'
 
         -- add empty children and unwrap RouteClass

@@ -14,8 +14,8 @@ import Test.Unit.Assert (assert)
 import React.Router (runRouter)
 import React.Router.Types (Router, Route(..), RouteClass(..), RouteProps(..), Triple(..))
 
-createRoute :: RouteClass
-createRoute = RouteClass $ createClassStateless (\(RouteProps {id, args, query, hash}) -> div [_id id] [text $ "route: " <> id])
+routeClass :: RouteClass
+routeClass = RouteClass $ createClassStateless (\(RouteProps {id, args, query, hash}) -> div [_id id] [text $ "route: " <> id])
 
 foreign import unsafeGetId :: ReactElement -> String
 
@@ -25,9 +25,13 @@ testSuite =
         suite "runRouter" do
             test "should find patterns"
                 let router :: Router
-                    router = (Route "main" "/" $ createRoute) :<
-                                [ (Route "home" "home" (createRoute)) :< []
-                                , (Route "user" "user/:user_id" (createRoute)) :< []
+                    router = (Route "main" "/" routeClass) :<
+                                [ (Route "home" "home" routeClass) :< []
+                                , (Route "user" "user/:user_id" routeClass) :<
+                                    [ (Route "books" "books" routeClass) :< []
+                                    , (Route "book" "books/:book_id" routeClass) :< []
+                                    ]
+                                , (Route "user-settings" "user/:user_id/settings" routeClass) :< []
                                 ]
                     check url expected = 
                         let res = runRouter url router
@@ -38,8 +42,9 @@ testSuite =
                                     ident = unsafeGetId el
                                 in assert ("expected id '" <> expected <> "' got '" <> ident <> "'") (ident == expected)
                  in do
-                check "/" "main"
-                check "/home" "home"
-                check "/user/2" "user"
-
-
+                    check "/" "main"
+                    check "/home" "home"
+                    check "/user/2" "user"
+                    check "/user/2/books" "books"
+                    check "/user/2/books/3" "book"
+                    check "/user/2/settings" "user-settings"
