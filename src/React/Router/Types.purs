@@ -1,11 +1,9 @@
 module React.Router.Types where
 
-import Prelude ((<>), class Eq, class Show, class Functor, append, show)
+import Prelude ((<>), class Eq, class Show, class Functor, show)
 import Control.Comonad.Cofree (Cofree)
-import Data.Dynamic (Dynamic)
 import Data.StrMap (StrMap())
 import Data.Newtype (class Newtype)
-import Data.Typeable (class Typeable, mkTyRep)
 import React (ReactClass)
 
 data Triple a b c = Triple a b c

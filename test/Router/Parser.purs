@@ -5,7 +5,7 @@ module Test.Router.Parser (
 import Prelude
 import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
-import Data.Tuple (Tuple(..), snd)
+import Data.Tuple (Tuple(..))
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 
