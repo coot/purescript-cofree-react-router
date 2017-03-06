@@ -1,6 +1,6 @@
 module React.Router where
 
-import Prelude (($), (==), (>), (-), id, map)
+import Prelude (($), (==), (>=), (-), id, map)
 import Control.Comonad.Cofree (head, tail)
 import Data.Array as A
 import Data.Maybe (Maybe(..), fromJust, maybe)
@@ -52,41 +52,41 @@ routeProps { id, routeData, children } =
 
 runRouter ::  String -> Router -> Maybe (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
 runRouter urlStr router =
-    combine $ addEmptyChildren $ stepBF [] [Tuple url router] []
+    combine $ addEmptyChildren $ stepBF [Triple [] url router] []
     where
         url :: URL
         url = parse decodeURIComponent urlStr
 
         -- check if `url1 :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
-        check :: Route -> URL -> Maybe (Tuple URL (Tuple RouteClass RouteProps))
+        check :: Route -> URL -> Maybe (Triple URL RouteClass RouteProps)
         check route url1 =
             case match (getRouteURLPattern route) url1 of
                 Nothing -> Nothing
                 Just (Tuple url2 (RouteData args query hash)) -> case route of
-                        Route id_ _ cls -> Just $ Tuple url2 (Tuple cls (RouteProps { id: id_, args, query, hash} ))
+                        Route id_ _ cls -> Just $ Triple url2 cls (RouteProps { id: id_, args, query, hash})
 
         -- breadth first search
-        stepBF :: Array (Tuple RouteClass RouteProps) -> Array (Tuple URL Router) -> Array (Tuple URL Router) -> Array (Tuple RouteClass RouteProps)
-        stepBF cnt rs rs' = do
+        stepBF :: Array (Triple (Array (Tuple RouteClass RouteProps)) URL Router) -> Array (Triple (Array (Tuple RouteClass RouteProps)) URL Router) -> Array (Tuple RouteClass RouteProps)
+        stepBF rs rs' = do
             case A.uncons rs of
-                 Nothing -> let rs1 = map (map tail) rs' :: Array (Tuple URL (Array Router))
-                                rs2 = A.concatMap (\(Tuple a bs) -> map (\b -> Tuple a b) bs) rs1 :: Array (Tuple URL Router)
+                 Nothing -> let rs1 = map (map tail) rs' :: Array (Triple (Array (Tuple RouteClass RouteProps)) URL (Array Router))
+                                rs2 = A.concatMap (\(Triple cnt' a bs) -> map (\b -> Triple cnt' a b) bs) rs1 :: Array (Triple (Array (Tuple RouteClass RouteProps)) URL Router)
                              in if A.length rs2 == 0
                                    -- 404 error
                                    then []
-                                   else stepBF cnt rs2 []
-                 Just {head: (Tuple url' r), tail: rsTail} ->
+                                   else stepBF rs2 []
+                 Just {head: (Triple cnt url' r), tail: rsTail} ->
                     -- match for route at the head of the router
                     case check (head r) url' of
-                        -- match returns rest of the url and a tuple of RouteClass and RouteArgs
-                        Just (Tuple url'' res') ->
+                        -- match returns rest of the url, a RouteClass and RouteProps
+                        Just (Triple url'' cls props) ->
                             if A.length url''.path == 0
                                 -- return the results
-                                then A.snoc cnt res'
+                                then A.snoc cnt (Tuple cls props)
                                 -- continue matching and add a tuple of url and
                                 -- a router to match at one level deeper
-                                else stepBF cnt rsTail (A.snoc rs' (Tuple url'' r))
-                        Nothing -> stepBF cnt (maybe [] id $ A.tail rs) rs'
+                                else stepBF rsTail (A.snoc rs' (Triple (A.snoc cnt (Tuple cls props)) url'' r))
+                        Nothing -> stepBF (maybe [] id $ A.tail rs) rs'
 
         -- add empty children and unwrap RouteClass
         addEmptyChildren :: Array (Tuple RouteClass RouteProps) -> Array (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
@@ -96,7 +96,7 @@ runRouter urlStr router =
         -- end creating elements and attaching them as children of the parent
         combine :: Array (Triple (ReactClass RouteProps) RouteProps (Array ReactElement)) -> Maybe (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
         combine rps | A.length rps == 1 = A.head rps
-        combine rps | A.length rps  > 2 = combine $ A.snoc (A.take (len - 3) rps) newLast
+        combine rps | A.length rps >= 2 = combine $ A.snoc (A.take (len - 2) rps) newLast
           where
               len = A.length rps
 

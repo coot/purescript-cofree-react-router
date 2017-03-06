@@ -1,6 +1,6 @@
 module React.Router.Types where
 
-import Prelude ((<>), class Eq, class Show, class Semigroup, append, show)
+import Prelude ((<>), class Eq, class Show, class Functor, append, show)
 import Control.Comonad.Cofree (Cofree)
 import Data.Dynamic (Dynamic)
 import Data.StrMap (StrMap())
@@ -9,6 +9,9 @@ import Data.Typeable (class Typeable, mkTyRep)
 import React (ReactClass)
 
 data Triple a b c = Triple a b c
+
+instance functorTriple :: Functor (Triple a b) where
+    map f (Triple a b c) = Triple a b (f c)
 
 newtype PathPart = PathPart String
 
@@ -39,13 +42,13 @@ instance showRouteData :: Show RouteData where
 
 type URLPattern = String
 
-newtype RouteProps = RouteProps { id:: String, args:: StrMap String, query:: Query, hash:: Hash }
+newtype RouteProps = RouteProps { id:: String, args:: StrMap String, query:: StrMap String, hash:: Hash }
+
+derive instance newtypeRouteProps :: Newtype RouteProps _
 
 newtype RouteClass = RouteClass (ReactClass RouteProps)
 
-instance newtypeRouteClass :: Newtype RouteClass (ReactClass RouteProps) where
-    unwrap (RouteClass cls) = cls
-    wrap = RouteClass
+derive instance newtypeRouteClass :: Newtype RouteClass _ 
 
 -- | Route type
 -- | The first parameter is an identifier
