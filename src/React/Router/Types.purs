@@ -1,9 +1,11 @@
 module React.Router.Types where
 
 import Prelude ((<>), class Eq, class Show, class Functor, show)
-import Control.Comonad.Cofree (Cofree)
-import Data.StrMap (StrMap())
+import Control.Comonad.Cofree ((:<), Cofree)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.StrMap (StrMap())
+import Data.Tuple (Tuple(..))
 import React (ReactClass)
 
 data Triple a b c = Triple a b c
@@ -65,4 +67,9 @@ getRouteClass :: Route -> RouteClass
 getRouteClass (Route _ _ cls) = cls
 
 -- | Router type
-type Router = Cofree Array Route
+type Router = Cofree Array (Tuple Route (Maybe RouteClass))
+
+withoutIndex :: Route -> Array Router -> Router
+withoutIndex r rs = Tuple r Nothing :< rs
+
+infixr 6 withoutIndex as :+
