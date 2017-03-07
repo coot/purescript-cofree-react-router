@@ -22,33 +22,8 @@ import React.Router.Types
     )
 import React.Router.Parser (match, parse)
 
--- routeSpec :: forall eff state props action. Route -> T.Spec eff (Tuple RouterState state) action
-
-{--
-  - Router
-  - 
-  - router =
-  -     Route "/" Home
-  -         [ IndexRoute Users []
-  -         , Route "user/:id" User
-  -             [ Route "email" UserEmail []
-  -             , Route "password" UserPassword []
-  -             ]
-  -         , Route "books" Books
-  -             [ Route ":id" Book []
-  -             , Route "reader" BookReader []
-  -             ]
-  -         ]
-  - 
-  - this is an annotated tree!
-  --}
-
-type RouteArgs = { id:: String, routeData:: RouteData, children:: Array ReactElement }
-
-routeProps :: RouteArgs -> RouteProps
-routeProps { id, routeData, children } =
-    case routeData of
-        RouteData args query hash -> RouteProps { id, args, query, hash }
+-- type alias to make type annotations more readable
+type RouteInfo = Triple RouteClass (Maybe RouteClass) RouteProps
 
 runRouter ::  String -> Router -> Maybe (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
 runRouter urlStr router =
@@ -71,9 +46,9 @@ runRouter urlStr router =
                                             }
 
         -- breadth first search
-        stepBF :: Array (Triple (Array (Triple RouteClass (Maybe RouteClass) RouteProps)) URL Router)
-               -> Array (Triple (Array (Triple RouteClass (Maybe RouteClass) RouteProps)) URL Router)
-               -> Array (Triple RouteClass (Maybe RouteClass) RouteProps)
+        stepBF :: Array (Triple (Array RouteInfo) URL Router)
+               -> Array (Triple (Array RouteInfo) URL Router)
+               -> Array RouteInfo
         stepBF rs rs' = do
             case A.uncons rs of
                  Nothing -> let 
@@ -102,7 +77,7 @@ runRouter urlStr router =
                         Nothing -> stepBF (maybe [] id $ A.tail rs) rs'
 
         -- add children (index route) and unwrap RouteClass
-        addEmptyChildren :: Array (Triple RouteClass (Maybe RouteClass) RouteProps)
+        addEmptyChildren :: Array RouteInfo
                          -> Array (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
         addEmptyChildren = map (\(Triple cls midx props) -> Triple (unwrap cls) props (maybe [] (\cls -> [createElement (unwrap cls) props []]) midx))
 

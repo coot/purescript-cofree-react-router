@@ -66,7 +66,21 @@ getRouteURLPattern (Route _ pat _) = pat
 getRouteClass :: Route -> RouteClass
 getRouteClass (Route _ _ cls) = cls
 
--- | Router type
+-- | Router
+-- | 
+-- | router =
+-- |     Route "home" "/" Home :+
+-- |         [ Route "user" "user/:id" User :+
+-- |             [ Route "email" "email" UserEmail :+ []
+-- |             , Route "password" "password" UserPassword :+ []
+-- |             ]
+-- |         , Tuple (Route "books" "books" Books) (Just BooksIndex) :<
+-- |             [ Route "book" ":id" Book :+ []
+-- |             , Route "reader" "reader" BookReader :+ []
+-- |             ]
+-- |         ]
+
+
 type Router = Cofree Array (Tuple Route (Maybe RouteClass))
 
 withoutIndex :: Route -> Array Router -> Router

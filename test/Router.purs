@@ -50,24 +50,24 @@ testSuite =
     suite "Router" do
         suite "runRouter"
             let router :: Router
-                router = (Route "main" "/" routeClass) :+
-                            [ (Route "home" "home" routeClass) :+ []
-                            , (Route "user" "user/:user_id" routeClass) :+
-                                [ (Route "books" "books" routeClass) :+ []
-                                , (Route "book" "books/:book_id" routeClass) :+
-                                    [ (Route "pages" "pages" routeClass) :+
-                                        [ (Route "page" ":page_id" routeClass) :+ [] ]
+                router = Route "main" "/" routeClass :+
+                            [ Route "home" "home" routeClass :+ []
+                            , Route "user" "user/:user_id" routeClass :+
+                                [ Route "books" "books" routeClass :+ []
+                                , Route "book" "books/:book_id" routeClass :+
+                                    [ Route "pages" "pages" routeClass :+
+                                        [ Route "page" ":page_id" routeClass :+ [] ]
                                     ]
                                 ]
-                            , (Route "user-settings" "user/:user_id/settings" routeClass) :+ []
+                            , Route "user-settings" "user/:user_id/settings" routeClass :+ []
                             ]
 
                 router2 :: Router
-                router2 = (Route "main" "/" routeClass2) :+
-                            [ (Route "home" "home" routeClass2) :+ 
-                                [ (Route "user" "user" routeClass2) :+ []
+                router2 = Route "main" "/" routeClass2 :+
+                            [ Route "home" "home" routeClass2 :+ 
+                                [ Route "user" "user" routeClass2 :+ []
                                 ]
-                            , (Route "user-settings" "home/user/settings" routeClass) :+ []
+                            , Route "user-settings" "home/user/settings" routeClass :+ []
                             ]
 
                 router3 :: Router
