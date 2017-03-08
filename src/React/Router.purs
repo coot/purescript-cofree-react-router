@@ -27,7 +27,7 @@ type RouteInfo = Triple RouteClass (Maybe RouteClass) RouteProps
 
 runRouter ::  String -> Router -> Maybe (Triple (ReactClass RouteProps) RouteProps (Array ReactElement))
 runRouter urlStr router =
-    combine $ addEmptyChildren $ stepBF [Triple [] url router] []
+    combine $ addEmptyChildren $ stepBF [Triple [] url router]
     where
         url :: URL
         url = parse decodeURIComponent urlStr
@@ -45,22 +45,22 @@ runRouter urlStr router =
                                             , props: (RouteProps { id: id_, args, query, hash})
                                             }
 
+        -- pushes tail of the router onto the stack
+        push :: (Triple (Array RouteInfo) URL Router)
+             -> Array (Triple (Array RouteInfo) URL Router)
+             -> Array (Triple (Array RouteInfo) URL Router)
+        push r rs = rs <> rs_
+          where
+              rs_ = case map tail r of 
+                        Triple cnt url router -> map (\router_ -> Triple cnt url router_) router
+
         -- breadth first search
         stepBF :: Array (Triple (Array RouteInfo) URL Router)
-               -> Array (Triple (Array RouteInfo) URL Router)
                -> Array RouteInfo
-        stepBF rs rs' = do
+        stepBF rs = do
             case A.uncons rs of
-                 Nothing -> let 
-                                rs1 :: Array (Triple (Array (Triple RouteClass (Maybe RouteClass) RouteProps)) URL (Array Router))
-                                rs1 = map (map tail) rs'
-
-                                rs2 :: Array (Triple (Array (Triple RouteClass (Maybe RouteClass) RouteProps)) URL Router)
-                                rs2 = A.concatMap (\(Triple cnt' url routers) -> map (\router_ -> Triple cnt' url router_) routers) rs1
-                             in if A.length rs2 == 0
-                                   -- 404 error
-                                   then []
-                                   else stepBF rs2 []
+                 -- 404 error
+                 Nothing -> []
                  Just {head: (Triple cnt url' r), tail: rsTail} ->
                     -- match for route at the head of the router
                     let route = fst $ head r
@@ -73,8 +73,8 @@ runRouter urlStr router =
                                then A.snoc cnt (Triple cls midx props)
                                -- continue matching and add a tuple of url and
                                -- a router to match at one level deeper
-                               else stepBF rsTail (A.snoc rs' (Triple (A.snoc cnt (Triple cls Nothing props)) url'' r))
-                        Nothing -> stepBF (maybe [] id $ A.tail rs) rs'
+                               else stepBF $ push (Triple (A.snoc cnt (Triple cls Nothing props)) url'' r) rsTail 
+                        Nothing -> stepBF (maybe [] id $ A.tail rs)
 
         -- add children (index route) and unwrap RouteClass
         addEmptyChildren :: Array RouteInfo
