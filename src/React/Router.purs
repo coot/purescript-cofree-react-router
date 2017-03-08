@@ -26,17 +26,14 @@ type RouteInfo = {routeClass:: RouteClass, indexClass:: (Maybe RouteClass), prop
 
 runRouter ::  String -> Router -> Maybe {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: (Array ReactElement)}
 runRouter urlStr router =
-    combine $ addEmptyChildren $ stepBF [{matches: [], url: url, router: router}]
+    combine $ addEmptyChildren $ stepBF [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
     where
-        url :: URL
-        url = parse decodeURIComponent urlStr
-
-        -- check if `url1 :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
+        -- check if `url :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
         check :: Route
               -> URL
               -> Maybe {url:: URL, routeClass:: RouteClass, props:: RouteProps}
-        check route url1 =
-            case match (getRouteURLPattern route) url1 of
+        check route url =
+            case match (getRouteURLPattern route) url of
                 Nothing -> Nothing
                 Just (Tuple url2 (RouteData args query hash)) -> case route of
                     Route id_ _ cls -> Just { url: url2
@@ -60,17 +57,17 @@ runRouter urlStr router =
                  Just {head: ri, tail: rsTail} ->
                     -- match for route at the head of the router
                     let route = fst $ head ri.router
-                        midx = snd $ head ri.router
+                        indexClass = snd $ head ri.router
                      in case check route ri.url of
                         -- match returns rest of the url, a RouteClass and RouteProps
-                        Just {url: url'', routeClass, props} ->
-                            if A.length url''.path == 0
+                        Just {url, routeClass, props} ->
+                            if A.length url.path == 0
                                -- return the results, include index route
-                               then A.snoc ri.matches {routeClass, props, indexClass: midx}
+                               then A.snoc ri.matches {routeClass, props, indexClass}
                                -- continue matching and add a tuple of url and
                                -- a router to match at one level deeper
                                else stepBF $ push { matches: A.snoc ri.matches {routeClass, props, indexClass: Nothing}
-                                                  , url: url''
+                                                  , url
                                                   , router: ri.router
                                                   } rsTail 
                         Nothing -> stepBF (maybe [] id $ A.tail rs)
