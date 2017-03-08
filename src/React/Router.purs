@@ -2,6 +2,7 @@ module React.Router where
 
 import Prelude (($), (<<<), (==), (>=), (-), (<>), id, map)
 import Control.Comonad.Cofree (head, tail)
+import Control.Monad.Rec.Class (Step(..), tailRec) 
 import Data.Array as A
 import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), fromJust, maybe)
@@ -29,7 +30,7 @@ type RouteInfo = {routeClass:: RouteClass, indexClass:: (Maybe RouteClass), prop
 
 runRouter ::  String -> Router -> Maybe {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: (Array ReactElement)}
 runRouter urlStr router =
-    combine <<< collectRouteProps <<< addEmptyChildren <<< stepBF $ [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
+    (tailRec combine) <<< collectRouteProps <<< addEmptyChildren <<< tailRec stepBF $ [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
     where
         -- check if `url :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
         check :: Route
@@ -46,17 +47,17 @@ runRouter urlStr router =
 
         -- pushes tail of the router onto the stack
         push :: {matches:: Array RouteInfo, url:: URL, router:: Router}
-             -> Array {matches:: (Array RouteInfo), url:: URL, router:: Router}
-             -> Array {matches:: (Array RouteInfo), url:: URL, router:: Router}
+             -> Array {matches:: Array RouteInfo, url:: URL, router:: Router}
+             -> Array {matches:: Array RouteInfo, url:: URL, router:: Router}
         push r rs = rs <> (map (r { router = _ }) $ tail r.router)
 
         -- (tco) breadth first search
         stepBF :: Array {matches:: (Array RouteInfo), url:: URL, router:: Router}
-               -> Array RouteInfo
+               -> Step (Array {matches:: (Array RouteInfo), url:: URL, router:: Router}) (Array RouteInfo)
         stepBF rs = do
             case A.uncons rs of
                  -- 404 error
-                 Nothing -> []
+                 Nothing -> Done []
                  Just {head: ri, tail: rsTail} ->
                     -- match for route at the head of the router
                     let route = fst $ head ri.router
@@ -66,14 +67,14 @@ runRouter urlStr router =
                         Just {url, routeClass, props} ->
                             if A.length url.path == 0
                                -- return the results, include index route
-                               then A.snoc ri.matches {routeClass, props, indexClass}
+                               then Done $ A.snoc ri.matches {routeClass, props, indexClass}
                                -- continue matching and add a tuple of url and
                                -- a router to match at one level deeper
-                               else stepBF $ push { matches: A.snoc ri.matches {routeClass, props, indexClass: Nothing}
-                                                  , url
-                                                  , router: ri.router
-                                                  } rsTail 
-                        Nothing -> stepBF (maybe [] id $ A.tail rs)
+                               else Loop $ push { matches: A.snoc ri.matches {routeClass, props, indexClass: Nothing}
+                                                , url
+                                                , router: ri.router
+                                                } rsTail 
+                        Nothing -> Loop $ maybe [] id $ A.tail rs
 
         -- add children (index route) and unwrap RouteClass
         addEmptyChildren :: Array RouteInfo
@@ -110,9 +111,10 @@ runRouter urlStr router =
         -- build ReactClass from a list of classes, traverse the list from the
         -- end creating elements and attaching them as children of the parent
         combine :: Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-                -> Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-        combine rps | A.length rps == 1 = A.head rps
-        combine rps | A.length rps >= 2 = combine $ A.snoc (A.take (len - 2) rps) newLast
+                -> Step (Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement})
+                        (Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement})
+        combine rps | A.length rps == 1 = Done $ A.head rps
+        combine rps | A.length rps >= 2 = Loop $ A.snoc (A.take (len - 2) rps) newLast
           where
               len = A.length rps
 
@@ -122,7 +124,7 @@ runRouter urlStr router =
 
               newLast :: {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: Array ReactElement}
               newLast = t { children = t.children <> [ createElement t'.routeClass t'.props t'.children ] }
-        combine _ = Nothing
+        combine _ = Done Nothing
 
 
 -- | routerSpec which runs `runRouter` computation on every route change
