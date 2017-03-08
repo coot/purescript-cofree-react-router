@@ -62,7 +62,7 @@ getRouteClass :: Route -> RouteClass
 getRouteClass (Route _ _ cls) = cls
 
 -- | Router
--- | 
+-- | ```
 -- | router =
 -- |     Route "home" "/" Home :+
 -- |         [ Route "user" "user/:id" User :+
@@ -74,6 +74,7 @@ getRouteClass (Route _ _ cls) = cls
 -- |             , Route "reader" "reader" BookReader :+ []
 -- |             ]
 -- |         ]
+-- | ```
 
 
 type Router = Cofree Array (Tuple Route (Maybe RouteClass))
