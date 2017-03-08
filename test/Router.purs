@@ -17,7 +17,7 @@ import Test.Unit.Assert (assert)
 import Control.Monad.Eff.Console (log)
 
 import React.Router (runRouter)
-import React.Router.Types ((:+), Router, Route(..), RouteClass(..), RouteProps(..), Triple(..))
+import React.Router.Types ((:+), Router, Route(..), RouteClass(..), RouteProps(..))
 
 routeClass :: RouteClass
 routeClass = RouteClass $ createClassStateless (\(RouteProps {id, args, query, hash}) -> div [_id id] [text $ "route: " <> id])
@@ -82,8 +82,8 @@ testSuite =
                     let res = runRouter url router_
                      in case res of
                         Nothing -> failure $ "router didn't found <" <> url <> ">"
-                        Just (Triple cls props children) -> 
-                            let el = createElement cls props children
+                        Just ri -> 
+                            let el = createElement ri.routeClass ri.props ri.children
                                 ids = getIds el
                             in assert ("expected ids '" <> show expected <> "' got '" <> show ids <> "'") (ids == expected)
             in do
@@ -106,15 +106,15 @@ testSuite =
                     let res = runRouter "/home" router2
                      in case res of
                              Nothing -> failure "router2 didn't found </home>"
-                             Just (Triple cls props children) -> do
-                                 assert ("should have 1 child while found: " <> show (A.length children) <> " children") $ A.length children == 1 
+                             Just ri -> do
+                                 assert ("should have 1 child while found: " <> show (A.length ri.children) <> " children") $ A.length ri.children == 1 
 
                 test "should mount index route"
                     let res = runRouter "/home/user" router3
                      in case res of
                              Nothing -> failure "router3 didn't found </home/user>"
-                             Just (Triple cls props children) ->
-                                 let el = createElement cls props children
+                             Just ri ->
+                                 let el = createElement ri.routeClass ri.props ri.children
                                   in do
                                       assert "the last child is not an index route " $ isLastIndexRoute el
 
@@ -122,8 +122,8 @@ testSuite =
                     let res = runRouter "/home/user" router3
                      in case res of
                              Nothing -> failure "router3 didn't found </home/user>"
-                             Just (Triple cls props children) ->
-                                 let el = createElement cls props children
+                             Just ri ->
+                                 let el = createElement ri.routeClass ri.props ri.children
                                      cnt = countIndexRoutes el
                                   in do
                                       assert ("there should by only one index route mounted, but found: " <> show cnt) $ cnt == 1
@@ -132,8 +132,8 @@ testSuite =
                     let res = runRouter "/home/user/1" router3
                      in case res of
                              Nothing -> failure "router3 didn't found </home/user/1>"
-                             Just (Triple cls props children) ->
-                                 let el = createElement cls props children
+                             Just ri ->
+                                 let el = createElement ri.routeClass ri.props ri.children
                                      cnt = countIndexRoutes el
                                   in do
                                       assert ("there should be no index route mounted, but found: " <> show cnt) $ cnt == 0

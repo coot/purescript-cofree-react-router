@@ -8,11 +8,6 @@ import Data.StrMap (StrMap())
 import Data.Tuple (Tuple(..))
 import React (ReactClass)
 
-data Triple a b c = Triple a b c
-
-instance functorTriple :: Functor (Triple a b) where
-    map f (Triple a b c) = Triple a b (f c)
-
 newtype PathPart = PathPart String
 
 derive instance newTypePathPart :: Newtype PathPart _
