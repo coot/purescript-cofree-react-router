@@ -37,13 +37,9 @@ instance showRouteData :: Show RouteData where
 
 type URLPattern = String
 
-newtype RouteProps = RouteProps { id:: String, args:: StrMap String, query:: StrMap String, hash:: Hash }
+type RouteProps = { id:: String, args:: StrMap String, query:: StrMap String, hash:: Hash }
 
-derive instance newtypeRouteProps :: Newtype RouteProps _
-
-newtype RouteClass = RouteClass (ReactClass RouteProps)
-
-derive instance newtypeRouteClass :: Newtype RouteClass _ 
+type RouteClass = ReactClass RouteProps
 
 -- | Route type
 -- | The first parameter is an identifier

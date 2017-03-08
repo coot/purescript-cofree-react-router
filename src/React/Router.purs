@@ -6,7 +6,6 @@ import Control.Monad.Rec.Class (Step(..), tailRec)
 import Data.Array as A
 import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), fromJust, maybe)
-import Data.Newtype (unwrap)
 import Data.StrMap as SM
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import React (ReactClass, ReactElement, createElement)
@@ -20,15 +19,15 @@ import React.Router.Types
     , URL
     , RouteData(RouteData)
     , RouteClass
-    , RouteProps(RouteProps)
+    , RouteProps
     , getRouteURLPattern
     )
 import React.Router.Parser (match, parse)
 
 -- type alias to make type annotations more readable
-type RouteInfo = {routeClass:: RouteClass, indexClass:: (Maybe RouteClass), props:: RouteProps}
+type RouteInfo = {routeClass:: RouteClass, indexClass:: Maybe RouteClass, props:: RouteProps}
 
-runRouter ::  String -> Router -> Maybe {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: (Array ReactElement)}
+runRouter ::  String -> Router -> Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
 runRouter urlStr router =
     (tailRec combine) <<< collectRouteProps <<< addEmptyChildren <<< tailRec stepBF $ [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
     where
@@ -42,7 +41,7 @@ runRouter urlStr router =
             Just (Tuple url2 (RouteData args query hash)) -> case route of
                 Route id_ _ cls -> Just { url: url2
                                         , routeClass: cls
-                                        , props: (RouteProps { id: id_, args, query, hash})
+                                        , props: { id: id_, args, query, hash}
                                         }
 
     -- pushes tail of the router onto the stack
@@ -78,11 +77,11 @@ runRouter urlStr router =
 
     -- add children (index route) and unwrap RouteClass
     addEmptyChildren :: Array RouteInfo
-                     -> Array {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: Array ReactElement}
+                     -> Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
     addEmptyChildren =
-        map (\ri -> { routeClass: (unwrap ri.routeClass)
+        map (\ri -> { routeClass: ri.routeClass
                     , props: ri.props
-                    , children: maybe [] (\cls -> [createElement (unwrap cls) ri.props []]) ri.indexClass
+                    , children: maybe [] (\cls -> [createElement cls ri.props []]) ri.indexClass
                     }
             )
 
@@ -94,7 +93,7 @@ runRouter urlStr router =
                     -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
                     -> { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
             collect c route = 
-                let props = unwrap route.props
+                let props = route.props
                  in (c { args = SM.union props.args c.args, query = SM.union props.query c.query, hash = props.hash })
 
             args :: { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
@@ -103,8 +102,8 @@ runRouter urlStr router =
             update :: { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
                    -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
             update ri = 
-                let props = unwrap ri.props
-                 in ri { props = RouteProps (props { args = args.args, query = args.query, hash = args.hash }) }
+                let props = ri.props
+                 in ri { props = props { args = args.args, query = args.query, hash = args.hash } }
          in map update rps
 
 
@@ -122,7 +121,7 @@ runRouter urlStr router =
 
           t' = unsafePartial $ fromJust (A.last rps)
 
-          newLast :: {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: Array ReactElement}
+          newLast :: {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
           newLast = t { children = t.children <> [ createElement t'.routeClass t'.props t'.children ] }
     combine _ = Done Nothing
 

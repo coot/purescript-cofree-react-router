@@ -6,7 +6,6 @@ import Prelude hiding (div)
 import Control.Comonad.Cofree ((:<))
 import Data.Array as A
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
 import Data.StrMap as SM
 import Data.Tuple (Tuple(..))
 import React (createClassStateless, ReactElement, spec, getProps, getChildren, createElement, createClass)
@@ -18,17 +17,17 @@ import Test.Unit.Assert (assert)
 import Control.Monad.Eff.Console (log)
 
 import React.Router (runRouter)
-import React.Router.Types ((:+), Router, Route(..), RouteClass(..), RouteProps(..))
+import React.Router.Types ((:+), Router, Route(..), RouteClass)
 
 routeClass :: RouteClass
-routeClass = RouteClass $ createClassStateless (\(RouteProps {id, args, query, hash}) -> div [_id id] [text $ "route: " <> id])
+routeClass = createClassStateless (\props -> div [_id props.id] [text $ "route: " <> props.id])
 
 routeClass2 :: RouteClass
-routeClass2 = RouteClass $ createClass $ spec 0 $
+routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
-                    pure $ div [_id (unwrap props).id] children)
+                    pure $ div [_id props.id] children)
 
 indexRouteClass :: RouteClass
 indexRouteClass = 
@@ -36,9 +35,9 @@ indexRouteClass =
         (\this -> do
                 props <- getProps this
                 log "rendering indexRouteClass"
-                pure $ div [_id ((unwrap props).id <> "-index"), className "index"] []
+                pure $ div [_id (props.id <> "-index"), className "index"] []
         )
-     in RouteClass $ createClass (clsSpec { displayName = "indexRouteClass" })
+     in createClass (clsSpec { displayName = "indexRouteClass" })
 
 foreign import getIds :: ReactElement -> Array String
 
@@ -157,19 +156,17 @@ testSuite =
                             ]
                      in case res of
                              Nothing -> failure $ "router didn't found <" <> url <> ">"
-                             Just ri -> case ri.props of
-                                             RouteProps props -> 
-                                                 let el = createElement ri.routeClass ri.props ri.children
-                                                     margsMain = getArgs "main" el
-                                                     margsHome = getArgs "user" el
-                                                  in do
-                                                    assert ("got props: " <> show props.args <> " expecting " <> show expected) $ props.args == expected
-                                                    case margsMain, margsHome of
-                                                         Just argsMain, Just argsHome -> do
-                                                             assert ("got #main props: " <> show argsMain <> " expecting " <> show expected) $ argsMain == expected
-                                                             assert ("got #user props: " <> show argsHome <> " expecting " <> show expected) $ argsHome == expected
-                                                         Nothing, _ -> failure "main not found"
-                                                         _, Nothing -> failure "user not found"
+                             Just ri -> let el = createElement ri.routeClass ri.props ri.children
+                                            margsMain = getArgs "main" el
+                                            margsHome = getArgs "user" el
+                                         in do
+                                           assert ("got props: " <> show ri.props.args <> " expecting " <> show expected) $ ri.props.args == expected
+                                           case margsMain, margsHome of
+                                                Just argsMain, Just argsHome -> do
+                                                    assert ("got #main props: " <> show argsMain <> " expecting " <> show expected) $ argsMain == expected
+                                                    assert ("got #user props: " <> show argsHome <> " expecting " <> show expected) $ argsHome == expected
+                                                Nothing, _ -> failure "main not found"
+                                                _, Nothing -> failure "user not found"
 
 
                 test "test quargs" 
@@ -182,16 +179,14 @@ testSuite =
                             ]
                      in case res of
                              Nothing -> failure $ "router didn't found <" <> url <> ">"
-                             Just ri -> case ri.props of
-                                             RouteProps props -> 
-                                                 let el = createElement ri.routeClass ri.props ri.children
-                                                     mqMain = getQuery "main" el
-                                                     mqHome = getQuery "user" el
-                                                  in do
-                                                    assert ("got query: " <> show props.query <> " expecting " <> show expected) $ props.query == expected
-                                                    case mqMain, mqHome of
-                                                         Just qMain, Just qHome -> do
-                                                             assert ("got #main props: " <> show qMain <> " expecting " <> show expected) $ qMain == expected
-                                                             assert ("got #user props: " <> show qHome <> " expecting " <> show expected) $ qHome == expected
-                                                         Nothing, _ -> failure "main not found"
-                                                         _, Nothing -> failure "user not found"
+                             Just ri -> let el = createElement ri.routeClass ri.props ri.children
+                                            mqMain = getQuery "main" el
+                                            mqHome = getQuery "user" el
+                                         in do
+                                             assert ("got query: " <> show ri.props.query <> " expecting " <> show expected) $ ri.props.query == expected
+                                             case mqMain, mqHome of
+                                                  Just qMain, Just qHome -> do
+                                                      assert ("got #main props: " <> show qMain <> " expecting " <> show expected) $ qMain == expected
+                                                      assert ("got #user props: " <> show qHome <> " expecting " <> show expected) $ qHome == expected
+                                                  Nothing, _ -> failure "main not found"
+                                                  _, Nothing -> failure "user not found"
