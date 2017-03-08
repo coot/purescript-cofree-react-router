@@ -1,17 +1,20 @@
 module React.Router where
 
-import Prelude (($), (==), (>=), (-), (<>), id, map)
+import Prelude (($), (<<<), (==), (>=), (-), (<>), id, map)
 import Control.Comonad.Cofree (head, tail)
 import Data.Array as A
+import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), fromJust, maybe)
 import Data.Newtype (unwrap)
+import Data.StrMap as SM
 import Data.Tuple (Tuple(Tuple), fst, snd)
 import React (ReactClass, ReactElement, createElement)
 import Global (decodeURIComponent)
 import Partial.Unsafe (unsafePartial)
 
 import React.Router.Types
-    ( Route(Route)
+    ( Hash(Hash)
+    , Route(Route)
     , Router
     , URL
     , RouteData(RouteData)
@@ -26,7 +29,7 @@ type RouteInfo = {routeClass:: RouteClass, indexClass:: (Maybe RouteClass), prop
 
 runRouter ::  String -> Router -> Maybe {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: (Array ReactElement)}
 runRouter urlStr router =
-    combine $ addEmptyChildren $ stepBF [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
+    combine <<< collectRouteProps <<< addEmptyChildren <<< stepBF $ [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
     where
         -- check if `url :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
         check :: Route
@@ -82,10 +85,32 @@ runRouter urlStr router =
                         }
                 )
 
+        collectRouteProps :: Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
+                         -> Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
+        collectRouteProps rps =
+            let
+                collect :: { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
+                        -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
+                        -> { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
+                collect c route = 
+                    let props = unwrap route.props
+                     in (c { args = SM.union props.args c.args, query = SM.union props.query c.query, hash = props.hash })
+
+                args :: { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
+                args = foldl collect { args: SM.empty, query: SM.empty, hash: Hash "" } rps
+
+                update :: { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
+                       -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
+                update ri = 
+                    let props = unwrap ri.props
+                     in ri { props = RouteProps (props { args = args.args, query = args.query, hash = args.hash }) }
+             in map update rps
+
+
         -- build ReactClass from a list of classes, traverse the list from the
         -- end creating elements and attaching them as children of the parent
-        combine :: Array {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: Array ReactElement}
-                -> Maybe {routeClass:: (ReactClass RouteProps), props:: RouteProps, children:: Array ReactElement}
+        combine :: Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
+                -> Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
         combine rps | A.length rps == 1 = A.head rps
         combine rps | A.length rps >= 2 = combine $ A.snoc (A.take (len - 2) rps) newLast
           where

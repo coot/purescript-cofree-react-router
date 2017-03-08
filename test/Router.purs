@@ -7,6 +7,7 @@ import Control.Comonad.Cofree ((:<))
 import Data.Array as A
 import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
+import Data.StrMap as SM
 import Data.Tuple (Tuple(..))
 import React (createClassStateless, ReactElement, spec, getProps, getChildren, createElement, createClass)
 import React.DOM (div, text)
@@ -44,6 +45,14 @@ foreign import getIds :: ReactElement -> Array String
 foreign import isLastIndexRoute :: ReactElement -> Boolean
 
 foreign import countIndexRoutes :: ReactElement -> Int
+
+foreign import _getProp :: String -> (SM.StrMap String -> Maybe (SM.StrMap String)) -> Maybe (SM.StrMap String) -> String -> ReactElement -> Maybe (SM.StrMap String)
+
+getArgs :: String -> ReactElement -> Maybe (SM.StrMap String)
+getArgs = _getProp "args" Just Nothing
+
+getQuery :: String -> ReactElement -> Maybe (SM.StrMap String)
+getQuery = _getProp "query" Just Nothing
 
 testSuite :: forall eff. TestSuite eff
 testSuite =
@@ -137,3 +146,52 @@ testSuite =
                                      cnt = countIndexRoutes el
                                   in do
                                       assert ("there should be no index route mounted, but found: " <> show cnt) $ cnt == 0
+
+                test "test args" 
+                    let url = "/user/2/books/1/pages/100"
+                        res = runRouter url router
+                        expected = SM.fromFoldable 
+                            [ Tuple "user_id" "2"
+                            , Tuple "book_id" "1"
+                            , Tuple "page_id" "100"
+                            ]
+                     in case res of
+                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Just ri -> case ri.props of
+                                             RouteProps props -> 
+                                                 let el = createElement ri.routeClass ri.props ri.children
+                                                     margsMain = getArgs "main" el
+                                                     margsHome = getArgs "user" el
+                                                  in do
+                                                    assert ("got props: " <> show props.args <> " expecting " <> show expected) $ props.args == expected
+                                                    case margsMain, margsHome of
+                                                         Just argsMain, Just argsHome -> do
+                                                             assert ("got #main props: " <> show argsMain <> " expecting " <> show expected) $ argsMain == expected
+                                                             assert ("got #user props: " <> show argsHome <> " expecting " <> show expected) $ argsHome == expected
+                                                         Nothing, _ -> failure "main not found"
+                                                         _, Nothing -> failure "user not found"
+
+
+                test "test quargs" 
+                    let url = "/user/2/books/1/pages/100?userId=2&bookId=1&pageId=100"
+                        res = runRouter url router
+                        expected = SM.fromFoldable 
+                            [ Tuple "userId" "2"
+                            , Tuple "bookId" "1"
+                            , Tuple "pageId" "100"
+                            ]
+                     in case res of
+                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Just ri -> case ri.props of
+                                             RouteProps props -> 
+                                                 let el = createElement ri.routeClass ri.props ri.children
+                                                     mqMain = getQuery "main" el
+                                                     mqHome = getQuery "user" el
+                                                  in do
+                                                    assert ("got query: " <> show props.query <> " expecting " <> show expected) $ props.query == expected
+                                                    case mqMain, mqHome of
+                                                         Just qMain, Just qHome -> do
+                                                             assert ("got #main props: " <> show qMain <> " expecting " <> show expected) $ qMain == expected
+                                                             assert ("got #user props: " <> show qHome <> " expecting " <> show expected) $ qHome == expected
+                                                         Nothing, _ -> failure "main not found"
+                                                         _, Nothing -> failure "user not found"

@@ -48,3 +48,34 @@ exports.countIndexRoutes = function(element) {
     return cnt
   })(element)
 }
+
+function getComponentById(id, element) {
+  if (element.props.id === id)
+    return element
+  var children = toArray(element.props.children)
+  for (var i=0, len=children.length; i < len; i++) {
+    var element = getComponentById(id, children[i]);
+    if (element)
+      return element
+  }
+  return null
+}
+
+
+exports._getProp = function(propName) {
+  return function getArgs(Just) {
+    return function(Nothing) {
+      return function(id) {
+        return function(element) {
+          var element = getComponentById(id, element)
+          if (!element)
+            return Nothing
+          if (element.props[propName])
+            return Just(element.props[propName])
+          else
+            return Nothing
+        }
+      }
+    }
+  }
+}
