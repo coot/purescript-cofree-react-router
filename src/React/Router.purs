@@ -8,8 +8,9 @@ import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), fromJust, maybe)
 import Data.StrMap as SM
 import Data.Tuple (Tuple(Tuple), fst, snd)
-import React (ReactClass, ReactElement, createElement)
 import Global (decodeURIComponent)
+import Optic.Getter (view)
+import React (ReactClass, ReactElement, createElement)
 import Partial.Unsafe (unsafePartial)
 
 import React.Router.Types
@@ -20,7 +21,7 @@ import React.Router.Types
     , RouteData(RouteData)
     , RouteClass
     , RouteProps
-    , getRouteURLPattern
+    , routeUrlLens
     )
 import React.Router.Parser (match, parse)
 
@@ -36,7 +37,7 @@ runRouter urlStr router =
           -> URL
           -> Maybe {url:: URL, routeClass:: RouteClass, props:: RouteProps}
     check route url =
-        case match (getRouteURLPattern route) url of
+        case match (view routeUrlLens route) url of
             Nothing -> Nothing
             Just (Tuple url2 (RouteData args query hash)) -> case route of
                 Route id_ _ cls -> Just { url: url2

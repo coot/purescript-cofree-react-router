@@ -1,11 +1,13 @@
 module React.Router.Types where
 
-import Prelude ((<>), class Eq, class Show, class Functor, show)
+import Prelude ((<>), class Eq, class Show, show)
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.StrMap (StrMap())
 import Data.Tuple (Tuple(..))
+import Optic.Types (Lens')
+import Optic.Lens (lens)
 import React (ReactClass)
 
 newtype PathPart = PathPart String
@@ -48,14 +50,14 @@ data Route = Route String URLPattern RouteClass
 instance showRoute :: Show Route where
     show (Route id_ url _) = "<Route " <> id_ <> ">"
 
-getRouteId :: Route -> String
-getRouteId (Route id_ _ _) = id_
+routeIdLens :: Lens' Route String
+routeIdLens = lens (\(Route id _ _) -> id) (\(Route _ url cls) id -> Route id url cls)
 
-getRouteURLPattern :: Route -> URLPattern
-getRouteURLPattern (Route _ pat _) = pat
+routeUrlLens :: Lens' Route URLPattern
+routeUrlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
-getRouteClass :: Route -> RouteClass
-getRouteClass (Route _ _ cls) = cls
+routeClassLens :: Lens' Route (ReactClass RouteProps)
+routeClassLens = lens (\(Route _ _ cls) -> cls) (\(Route id url _) cls -> Route id url cls)
 
 -- | Router
 -- | ```
