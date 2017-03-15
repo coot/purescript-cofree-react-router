@@ -39,7 +39,7 @@ instance showRouteData :: Show RouteData where
 
 type URLPattern = String
 
-type RouteProps = { id:: String, args:: StrMap String, query:: StrMap String, hash:: Hash }
+type RouteProps = { id :: String, args :: StrMap String, query :: StrMap String, hash :: Hash }
 
 type RouteClass = ReactClass RouteProps
 

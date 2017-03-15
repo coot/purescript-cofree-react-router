@@ -1,130 +1,82 @@
 module React.Router where
 
-import Prelude (($), (<<<), (==), (>=), (-), (<>), id, map)
-import Control.Comonad.Cofree (head, tail)
-import Control.Monad.Rec.Class (Step(..), tailRec) 
 import Data.Array as A
-import Data.Foldable (foldl)
-import Data.Maybe (Maybe(..), fromJust, maybe)
-import Data.StrMap as SM
-import Data.Tuple (Tuple(Tuple), fst, snd)
+import Control.Comonad.Cofree (Cofree, head, tail, (:<))
+import Data.Foldable (foldl, foldr)
+import Data.Maybe (Maybe(..), maybe)
+import Data.Tuple (Tuple(..), fst, snd)
 import Global (decodeURIComponent)
 import Optic.Getter (view)
+import Prelude (map, ($), (<$>))
 import React (ReactClass, ReactElement, createElement)
-import Partial.Unsafe (unsafePartial)
-
-import React.Router.Types
-    ( Hash(Hash)
-    , Route(Route)
-    , Router
-    , URL
-    , RouteData(RouteData)
-    , RouteClass
-    , RouteProps
-    , routeUrlLens
-    )
 import React.Router.Parser (match, parse)
+import React.Router.Types (Route(..), RouteClass, RouteData(..), RouteProps, Router, URL, routeUrlLens)
 
 -- type alias to make type annotations more readable
 type RouteInfo = {routeClass:: RouteClass, indexClass:: Maybe RouteClass, props:: RouteProps}
 
-runRouter ::  String -> Router -> Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-runRouter urlStr router =
-    (tailRec combine) <<< collectRouteProps <<< addEmptyChildren <<< tailRec stepBF $ [{matches: [], url: parse decodeURIComponent urlStr, router: router}]
+-- | remove all branches that are annotated with `Nothing`
+shake :: forall a. Cofree Array (Maybe a) -> Maybe (Cofree Array a)
+shake cof = case head cof of
+    Nothing -> Nothing
+    Just a -> Just $ a :< go (tail cof)
+  where
+    go :: Array (Cofree Array (Maybe a)) -> Array (Cofree Array a)
+    go cofs = foldl f [] cofs
+      where f cofs cof = case head cof of
+              Nothing -> cofs
+              Just cofHead -> A.snoc cofs (cofHead :< go (tail cof))
+
+runRouter ::  String -> Router -> Maybe ReactElement
+runRouter urlStr router = case shake $ go (parse decodeURIComponent urlStr) router of
+      Nothing -> Nothing
+      Just cof -> Just (createRouteElement cof)
     where
+
     -- check if `url :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
     check :: Route
           -> URL
-          -> Maybe {url:: URL, routeClass:: RouteClass, props:: RouteProps}
+          -> Maybe {url :: URL, props :: RouteProps}
     check route url =
         case match (view routeUrlLens route) url of
             Nothing -> Nothing
-            Just (Tuple url2 (RouteData args query hash)) -> case route of
-                Route id_ _ cls -> Just { url: url2
-                                        , routeClass: cls
-                                        , props: { id: id_, args, query, hash}
-                                        }
+            Just (Tuple urlReset (RouteData args query hash)) -> case route of
+                Route id _ _ -> Just { url: urlReset
+                                     , props: { id, args, query, hash }
+                                     }
 
-    -- pushes tail of the router onto the stack
-    push :: {matches:: Array RouteInfo, url:: URL, router:: Router}
-         -> Array {matches:: Array RouteInfo, url:: URL, router:: Router}
-         -> Array {matches:: Array RouteInfo, url:: URL, router:: Router}
-    push r rs = rs <> (map (r { router = _ }) $ tail r.router)
-
-    -- (tco) breadth first search
-    stepBF :: Array {matches:: (Array RouteInfo), url:: URL, router:: Router}
-           -> Step (Array {matches:: (Array RouteInfo), url:: URL, router:: Router}) (Array RouteInfo)
-    stepBF rs = do
-        case A.uncons rs of
-             -- 404 error
-             Nothing -> Done []
-             Just {head: ri, tail: rsTail} ->
-                -- match for route at the head of the router
-                let route = fst $ head ri.router
-                    indexClass = snd $ head ri.router
-                 in case check route ri.url of
-                    -- match returns rest of the url, a RouteClass and RouteProps
-                    Just {url, routeClass, props} ->
-                        if A.length url.path == 0
-                           -- return the results, include index route
-                           then Done $ A.snoc ri.matches {routeClass, props, indexClass}
-                           -- continue matching and add a tuple of url and
-                           -- a router to match at one level deeper
-                           else Loop $ push { matches: A.snoc ri.matches {routeClass, props, indexClass: Nothing}
-                                            , url
-                                            , router: ri.router
-                                            } rsTail 
-                    Nothing -> Loop $ maybe [] id $ A.tail rs
-
-    -- add children (index route) and unwrap RouteClass
-    addEmptyChildren :: Array RouteInfo
-                     -> Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-    addEmptyChildren =
-        map (\ri -> { routeClass: ri.routeClass
-                    , props: ri.props
-                    , children: maybe [] (\cls -> [createElement cls ri.props []]) ri.indexClass
-                    }
-            )
-
-    collectRouteProps :: Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-                     -> Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-    collectRouteProps rps =
-        let
-            collect :: { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
-                    -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
-                    -> { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
-            collect c route = 
-                let props = route.props
-                 in (c { args = SM.union props.args c.args, query = SM.union props.query c.query, hash = props.hash })
-
-            args :: { args:: SM.StrMap String, query:: SM.StrMap String, hash:: Hash }
-            args = foldl collect { args: SM.empty, query: SM.empty, hash: Hash "" } rps
-
-            update :: { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
-                   -> { routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement }
-            update ri = 
-                let props = ri.props
-                 in ri { props = props { args = args.args, query = args.query, hash = args.hash } }
-         in map update rps
-
-
-    -- build ReactClass from a list of classes, traverse the list from the
-    -- end creating elements and attaching them as children of the parent
-    combine :: Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-            -> Step (Array {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement})
-                    (Maybe {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement})
-    combine rps | A.length rps == 1 = Done $ A.head rps
-    combine rps | A.length rps >= 2 = Loop $ A.snoc (A.take (len - 2) rps) newLast
+    -- traverse Cofree and match routes
+    go :: URL -> Router -> Cofree Array (Maybe {url :: URL, props :: RouteProps, route :: Route, indexRoute :: Maybe (ReactClass RouteProps)})
+    go url r = case match of
+          Just {url, props} -> Just {url, props, route, indexRoute} :< map (go url) (tail r)
+          Nothing -> Nothing :< []
       where
-          len = A.length rps
+        head_ = head r
 
-          t = unsafePartial $ fromJust (rps A.!! (len - 2))
+        route :: Route
+        route = fst head_
 
-          t' = unsafePartial $ fromJust (A.last rps)
+        indexRoute :: Maybe RouteClass
+        indexRoute = snd head_
 
-          newLast :: {routeClass:: ReactClass RouteProps, props:: RouteProps, children:: Array ReactElement}
-          newLast = t { children = t.children <> [ createElement t'.routeClass t'.props t'.children ] }
-    combine _ = Done Nothing
+        match = check route url
+
+    -- traverse Cofree and produce ReactElement
+    createRouteElement :: Cofree Array {url :: URL, props :: RouteProps, route :: Route, indexRoute :: Maybe (ReactClass RouteProps)}
+                       -> ReactElement
+    createRouteElement cof = asElement (head cof) (tail cof)
+      where
+        asElement :: {url :: URL, props :: RouteProps, route :: Route, indexRoute :: (Maybe RouteClass)}
+                  -> Array (Cofree Array {url :: URL, props :: RouteProps, route :: Route, indexRoute :: (Maybe RouteClass)})
+                  -> ReactElement
+        asElement {url, props, route, indexRoute} [] =
+          case route of (Route _ _ cls) -> createElement cls props (maybe [] (\idxCls -> A.singleton $ createElement idxCls props []) indexRoute)
+        asElement {url, props, route, indexRoute} cofs =
+          case route of (Route _ _ cls) -> createElement cls props (addIndex $ createRouteElement <$> cofs)
+            where
+              -- add index if indexRoute is present
+              addIndex :: Array ReactElement -> Array ReactElement
+              addIndex children = maybe children (\idxCls -> A.cons (createElement idxCls props []) children) indexRoute
 
 
 -- | routerSpec which runs `runRouter` computation on every route change
