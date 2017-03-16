@@ -51,12 +51,18 @@ foreign import isLastIndexRoute :: ReactElement -> Boolean
 
 foreign import countIndexRoutes :: ReactElement -> Int
 
-foreign import _eqCofree :: (Maybe String -> Boolean)
-                         -> (Maybe String -> String)
-                         -> Cofree Array {id :: String, indexId :: Maybe String}
-                         -> Cofree Array {id :: String, indexId :: Maybe String}
-                         -> Boolean
+-- we cannot use Eq class for Cofree since it is possibly infinite type
+foreign import _eqCofree
+  :: (Maybe String -> Boolean)
+  -> (Maybe String -> String)
+  -> Cofree Array {id :: String, indexId :: Maybe String}
+  -> Cofree Array {id :: String, indexId :: Maybe String}
+  -> Boolean
 
+eqCofree
+  :: Cofree Array {id :: String, indexId :: Maybe String}
+  -> Cofree Array {id :: String, indexId :: Maybe String}
+  -> Boolean
 eqCofree = _eqCofree isJust (unsafePartial fromJust)
 
 foreign import _getProp :: String -> (SM.StrMap String -> Maybe (SM.StrMap String)) -> Maybe (SM.StrMap String) -> String -> ReactElement -> Maybe (SM.StrMap String)
