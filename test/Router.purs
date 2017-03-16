@@ -6,11 +6,12 @@ import Data.Array as A
 import Data.StrMap as SM
 import Control.Comonad.Cofree (Cofree, (:<))
 import Control.Monad.Eff.Console (log)
+import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
 import Partial.Unsafe (unsafePartial)
-import React (createClassStateless, ReactElement, spec, getProps, getChildren, createElement, createClass)
+import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
 import React.Router (matchRouter, runRouter)
@@ -65,6 +66,12 @@ getArgs = _getProp "args" Just Nothing
 
 getQuery :: String -> ReactElement -> Maybe (SM.StrMap String)
 getQuery = _getProp "query" Just Nothing
+
+unsafeGetChildren :: ReactElement -> Array ReactElement
+unsafeGetChildren = unsafePerformEff <<< getChildren <<< unsafeCoerceToReactElement
+  where
+    unsafeCoerceToReactElement :: forall props state. ReactElement -> ReactThis props state 
+    unsafeCoerceToReactElement = unsafeCoerce
 
 testSuite :: forall eff. TestSuite eff
 testSuite =
@@ -194,11 +201,18 @@ testSuite =
                 test "find a route in a different branch" do
                   check router2 "/home/user/settings" ["main", "user-settings"]
 
-                test "should mount children" $
+                test "should mount children" do
+
+                  checkTree router2 "/home" $
+                    {id: "main", indexId: Nothing} :<
+                      [{id: "home", indexId: Nothing} :< []]
+
+                  check router2 "/home" ["main", "home"]
+
                   case runRouter "/home" router2 of
                        Nothing -> failure "router2 didn't found </home>"
                        Just el -> do
-                         let len = A.length $ unsafeCoerce getChildren el
+                         let len = A.length $ unsafeGetChildren el
                          assert ("should have 1 child while found: " <> show len <> " children " <> (show $ getIds el) ) $ len == 1
 
                 test "should mount index route"
