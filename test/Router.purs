@@ -4,7 +4,7 @@ module Test.Router (
 
 import Data.Array as A
 import Data.StrMap as SM
-import Control.Comonad.Cofree (Cofree, (:<))
+import Control.Comonad.Cofree (Cofree, unfoldCofree, (:<))
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
@@ -53,17 +53,17 @@ foreign import countIndexRoutes :: ReactElement -> Int
 
 -- we cannot use Eq class for Cofree since it is possibly infinite type
 foreign import _eqCofree
-  :: (Maybe String -> Boolean)
-  -> (Maybe String -> String)
-  -> Cofree Array {id :: String, indexId :: Maybe String}
-  -> Cofree Array {id :: String, indexId :: Maybe String}
+  :: forall a
+   . (a -> a -> Boolean)
+  -> Cofree Array a
+  -> Cofree Array a
   -> Boolean
 
 eqCofree
   :: Cofree Array {id :: String, indexId :: Maybe String}
   -> Cofree Array {id :: String, indexId :: Maybe String}
   -> Boolean
-eqCofree = _eqCofree isJust (unsafePartial fromJust)
+eqCofree = _eqCofree (\a b -> a.id == b.id && a.indexId == b.indexId)
 
 foreign import _getProp :: String -> (SM.StrMap String -> Maybe (SM.StrMap String)) -> Maybe (SM.StrMap String) -> String -> ReactElement -> Maybe (SM.StrMap String)
 
@@ -78,6 +78,31 @@ unsafeGetChildren = unsafePerformEff <<< getChildren <<< unsafeCoerceToReactElem
   where
     unsafeCoerceToReactElement :: forall props state. ReactElement -> ReactThis props state 
     unsafeCoerceToReactElement = unsafeCoerce
+
+-- this works only for elements with id in props
+unsafeChildrenTree :: ReactElement -> Cofree Array String
+unsafeChildrenTree el = getId <$> unfoldCofree el id unsafeGetChildren
+  where
+    getId :: ReactElement -> String
+    getId el_ = _.id <<< unsafeCoerce <<< unsafePerformEff <<< getProps <<< unsafeCoerce $ el_
+
+eqCofreeS
+  :: Cofree Array String
+  -> Cofree Array String
+  -> Boolean
+eqCofreeS = _eqCofree (\a b -> a == b)
+
+foreign import _showCofree
+  :: forall a
+   . (a -> String)
+  -> Cofree Array a
+  -> String
+
+showChildrenTree :: Cofree Array String -> String
+showChildrenTree = _showCofree showId
+  where
+    showId :: String -> String
+    showId = id
 
 testSuite :: forall eff. TestSuite eff
 testSuite =
@@ -106,17 +131,19 @@ testSuite =
                 router3 :: Router
                 router3 = Route "main" "/" routeClass2 :+
                           [ Tuple (Route "home" "home" routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
-                              [ Tuple (Route "users" "user" routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
-                              , Route "user" "user/:user_id" routeClass2 :+ []
+                              [ Tuple (Route "users" "users" routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
+                              , Route "user" "users/:user_id" routeClass2 :+ []
                               ]
                           ]
 
-                check router_ url expected = 
+                checkElementTree router_ url expected =
                   case runRouter url router_ of
                        Nothing -> failure $ "router didn't found <" <> url <> ">"
                        Just el -> 
-                         let ids = getIds el
-                          in assert ("expected ids '" <> show expected <> "' got '" <> show ids <> "'") (ids == expected)
+                         let chTree = unsafeChildrenTree el
+                          in assert
+                            ("children trees are not equal: got\n" <> (showChildrenTree chTree) <> "\nexpected\n" <> (showChildrenTree expected)) $
+                            eqCofreeS chTree expected
 
                 checkTree router_ url expected =
                   case idTree <$> matchRouter (parse decodeURIComponent url) router_ of
@@ -126,18 +153,23 @@ testSuite =
 
             in do
                 test "should find patterns" do
-                  checkTree router "/" ({id: "main", indexId: Nothing} :< [])
-                  check router "/" ["main"]
+                  checkTree router "/" $ {id: "main", indexId: Nothing} :< []
+                  checkElementTree router "/" $ "main" :< []
                   checkTree router "/home" $
                     {id: "main", indexId: Nothing} :<
-                      [ {id: "home", indexId: Nothing} :< [] ]
-                  check router "/home" ["main", "home"]
+                      [{id: "home", indexId: Nothing} :< []]
+                  checkElementTree router "/home" $
+                    "main" :<
+                      ["home" :< []]
 
                 test "should mount index route when present" do
                   checkTree router "/user/2" $
                     {id: "main", indexId: Nothing}  :<
                       [{id: "user", indexId: Just "user-index"} :< []]
-                  check router "/user/2" ["main", "user", "user-index"]
+                  checkElementTree router "/user/2" $
+                    "main" :<
+                      ["user" :<
+                        ["user-index" :< []]]
 
                 test "should not mount index route when the url goes deeper" do
                   checkTree router "/user/2/books/1" $
@@ -146,7 +178,10 @@ testSuite =
                       [{id: "user", indexId: Just "user-index"} :<
                         [{id: "book", indexId: Nothing} :< []]]
                   -- but here the index cannot be present
-                  check router "/user/2/books/1" ["main", "user", "book"]
+                  checkElementTree router "/user/2/books/1" $
+                    "main" :<
+                      ["user" :<
+                        ["book" :< []]]
 
                 test "should find a long path" do
                   checkTree router "/user/2/books/1/pages/100" $ 
@@ -155,7 +190,12 @@ testSuite =
                         [{id: "book", indexId: Nothing} :<
                           [{id: "pages", indexId: Nothing} :<
                             [{id: "page", indexId: Nothing} :< []]]]]
-                  check router "/user/2/books/1/pages/100" ["main", "user", "book", "pages", "page"]
+                  checkElementTree router "/user/2/books/1/pages/100" $
+                    "main" :<
+                      ["user" :<
+                        ["book" :<
+                          ["pages" :<
+                            ["page" :< []]]]]
 
                 test "mount various paths at the same time" $
                   let router = Route "main" "/" routeClass :+
@@ -168,7 +208,11 @@ testSuite =
                          [ {id: "users", indexId: Nothing} :< []
                          , {id: "books", indexId: Nothing} :< []
                          ]
-                    check router "/users" ["main", "users", "books"]
+                    checkElementTree router "/users" $
+                      "main" :< 
+                        ["users" :< []
+                        ,"books" :< []
+                        ]
 
                 test "mount various paths with indexes" $
                   let router = Route "main" "/" routeClass :+
@@ -181,7 +225,13 @@ testSuite =
                           [ {id: "users", indexId: Just "users-index"} :< []
                           , {id: "books", indexId: Just "books-index"} :< []
                           ]
-                      check router "/users" ["main", "users", "users-index", "books", "books-index"]
+                      checkElementTree router "/users" $
+                        "main" :<
+                          ["users" :<
+                            ["users-index" :< []]
+                          ,"books" :<
+                            ["books-index" :< []]
+                          ]
 
 
                 test "404 pages" do
@@ -201,11 +251,18 @@ testSuite =
                        Just el -> failure $ "router found \"/404-page/main\": " <> show (getIds el)
 
                 test "should find a route if a less speicalized one hides it" do
-                  check router "/user/2/settings" ["main", "user-settings"]
-                  check router "/user/2/books/3" ["main", "user", "book"]
+                  checkElementTree router "/user/2/settings" $
+                    "main" :<
+                      ["user-settings" :< []]
+                  checkElementTree router "/user/2/books/3" $
+                    "main" :<
+                      ["user" :<
+                        ["book" :< []]]
 
                 test "find a route in a different branch" do
-                  check router2 "/home/user/settings" ["main", "user-settings"]
+                  checkElementTree router2 "/home/user/settings" $
+                    "main" :< 
+                      ["user-settings" :< []]
 
                 test "should mount children" do
 
@@ -213,7 +270,9 @@ testSuite =
                     {id: "main", indexId: Nothing} :<
                       [{id: "home", indexId: Nothing} :< []]
 
-                  check router2 "/home" ["main", "home"]
+                  checkElementTree router2 "/home" $
+                    "main" :<
+                      ["home" :< []]
 
                   case runRouter "/home" router2 of
                        Nothing -> failure "router2 didn't found </home>"
@@ -221,22 +280,31 @@ testSuite =
                          let len = A.length $ unsafeGetChildren el
                          assert ("should have 1 child while found: " <> show len <> " children " <> (show $ getIds el) ) $ len == 1
 
-                test "should mount index route"
-                  case runRouter "/home/user" router3 of
+                test "should mount index route" do
+                  checkElementTree router3 "/home/users" $
+                    "main" :<
+                      ["home" :<
+                        ["users" :<
+                          ["users-index" :< []]]]
+                  case runRouter "/home/users" router3 of
                        Nothing -> failure "router3 didn't found </home/user>"
                        Just el -> assert "the last child is not an index route " $ isLastIndexRoute el
 
-                test "should mount only one index route"
-                  case runRouter "/home/user" router3 of
+                test "should mount only one index route" do
+                  case runRouter "/home/users" router3 of
                        Nothing -> failure "router3 didn't found </home/user>"
                        Just el ->
                          let cnt = countIndexRoutes el
                           in do
                             assert ("there should by only one index route mounted, but found: " <> show cnt) $ cnt == 1
 
-                test "should not mount index route when it is not configured"
-                  case runRouter "/home/user/1" router3 of
-                       Nothing -> failure "router3 didn't found </home/user/1>"
+                test "should not mount index route when it is not configured" do
+                  checkElementTree router3 "/home/users/1" do
+                    "main" :<
+                      ["home" :<
+                        ["user" :< []]]
+                  case runRouter "/home/users/1" router3 of
+                       Nothing -> failure "router3 didn't found </home/users/1>"
                        Just el ->
                          let cnt = countIndexRoutes el
                           in do

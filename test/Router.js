@@ -91,36 +91,36 @@ exports._getProp = function(propName) {
   }
 }
 
-exports._eqCofree = function eqCofree (isJust) {
-  return function (fromJust) {
-    return function _eqCofree(cofA) {
-      return function (cofB) {
-        if (cofA.value0.id !== cofB.value0.id) {
+exports._eqCofree = function eqCofree (eq) {
+  return function _eqCofree(cofA) {
+    return function (cofB) {
+      if (!eq(cofA.value0)(cofB.value0))
+        return false
+
+      var tailA = cofA.value1.thunk()
+      var tailB = cofB.value1.thunk()
+      if (tailA.length != tailB.length)
+        return false
+
+      for (var i=0, len=tailA.length; i < len; i++) {
+        var x = tailA[i]
+        var y = tailB[i]
+        if (!_eqCofree(x)(y)) {
           return false
         }
-
-        var isJustA = isJust(cofA.value0.indexId)
-        var isJustB = isJust(cofB.value0.indexId)
-        if (isJustA !== isJustB)
-          return false
-
-        if (isJustA && isJustB && fromJust(cofA.value0.indexId) !== fromJust(cofA.value0.indexId))
-          return false
-
-        var tailA = cofA.value1.thunk()
-        var tailB = cofB.value1.thunk()
-        if (tailA.length != tailB.length)
-          return false
-
-        for (var i=0, len=tailA.length; i < len; i++) {
-          var x = tailA[i]
-          var y = tailB[i]
-          if (!_eqCofree(x)(y)) {
-            return false
-          }
-        }
-        return true
       }
+      return true
     }
+  }
+}
+
+exports._showCofree = function showCofree(show) {
+  return function (cof) {
+    return (function _show(cof, level) {
+      var indent = Array.apply(Array, Array(level)).map(function(el) {return "  "}).join("")
+      var str = show(cof.value0) + "\n" + indent + "  ["
+      var tail = cof.value1.thunk().forEach(function(cof_, idx) {str = str + (idx === 0 ? " " : ("\n" + indent + "  , ")) +  _show(cof_, level + 1)})
+      return str + "\n" + indent + "  ]"
+    })(cof, 0)
   }
 }
