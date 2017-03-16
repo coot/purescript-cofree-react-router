@@ -44,11 +44,15 @@ type RouteProps = { id :: String, args :: StrMap String, query :: StrMap String,
 type RouteClass = ReactClass RouteProps
 
 -- | Route type
--- | The first parameter is an identifier
+-- | The first parameter is the id property
 data Route = Route String URLPattern RouteClass
 
+-- | IndexRoute type
+-- | The first parameter is the id property
+data IndexRoute = IndexRoute String RouteClass
+
 instance showRoute :: Show Route where
-    show (Route id_ url _) = "<Route " <> id_ <> ">"
+    show (Route id_ url _) = "<Route \"" <> id_ <> "\" \"" <> url <> "\">"
 
 routeIdLens :: Lens' Route String
 routeIdLens = lens (\(Route id _ _) -> id) (\(Route _ url cls) id -> Route id url cls)
@@ -75,7 +79,7 @@ routeClassLens = lens (\(Route _ _ cls) -> cls) (\(Route id url _) cls -> Route 
 -- | ```
 
 
-type Router = Cofree Array (Tuple Route (Maybe RouteClass))
+type Router = Cofree Array (Tuple Route (Maybe IndexRoute))
 
 withoutIndex :: Route -> Array Router -> Router
 withoutIndex r rs = Tuple r Nothing :< rs
