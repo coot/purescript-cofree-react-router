@@ -1,0 +1,39 @@
+{
+  "name": "purescript-cofree-react-router",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "dependencies": {
+    "react": "^15.4.2"
+  },
+  "devDependencies": {
+    "karma": "^1.5.0",
+    "karma-chrome-launcher": "^2.0.0",
+    "karma-firefox-launcher": "^1.0.1",
+    "karma-spec-reporter": "0.0.30"
+  },
+  "scripts": {
+    "pretest": "pulp browserify --main 'Test.Main' -I test --to karma/index.js",
+    "test": "karma start --single-run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coot/purescript-cofree-react-router.git"
+  },
+  "keywords": [
+    "router",
+    "react",
+    "cofree",
+    "purescript"
+  ],
+  "author": "Marcin Szamotulski",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/coot/purescript-cofree-react-router/issues"
+  },
+  "homepage": "https://github.com/coot/purescript-cofree-react-router#readme"
+}
