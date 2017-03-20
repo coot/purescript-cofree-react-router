@@ -8,17 +8,22 @@
     "test": "test"
   },
   "dependencies": {
-    "react": "^15.4.2"
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2"
   },
   "devDependencies": {
+    "express": "^4.15.2",
     "karma": "^1.5.0",
     "karma-chrome-launcher": "^2.0.0",
     "karma-firefox-launcher": "^1.0.1",
-    "karma-spec-reporter": "0.0.30"
+    "karma-spec-reporter": "0.0.30",
+    "rimraf": "^2.6.1"
   },
   "scripts": {
+    "clean": "rimraf output && rimraf .pulp-cache",
     "pretest": "pulp browserify --main 'Test.Main' -I test --to karma/index.js",
-    "test": "karma start --single-run"
+    "test": "karma start --single-run",
+    "example": "pulp browserify --main 'Example.Main' -I example --to dist/index.js"
   },
   "repository": {
     "type": "git",
