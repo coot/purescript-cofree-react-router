@@ -1,3 +1,5 @@
+"use strict"
+
 module.exports = config => {
   config.set({
     autoWatch: true,
