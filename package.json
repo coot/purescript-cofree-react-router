@@ -23,7 +23,7 @@
     "clean": "rimraf output && rimraf .pulp-cache",
     "pretest": "pulp browserify --main 'Test.Main' -I test --to karma/index.js",
     "test": "karma start --single-run",
-    "example": "pulp browserify --main 'Example.Main' -I example --to dist/index.js"
+    "example": "node utils/serve-example.js & pulp -w browserify --main 'Example.Main' -I example --to dist/index.js"
   },
   "repository": {
     "type": "git",

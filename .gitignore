@@ -3,5 +3,6 @@
 /.pulp-cache/
 /output/
 /karma/
+/dist/
 /.psc*
 /.psa*
