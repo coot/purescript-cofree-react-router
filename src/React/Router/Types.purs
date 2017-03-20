@@ -1,4 +1,21 @@
-module React.Router.Types where
+module React.Router.Types 
+  ( (:+)
+  , Hash(Hash)
+  , IndexRoute(IndexRoute)
+  , PathPart(PathPart)
+  , Query
+  , Route(Route)
+  , RouteClass
+  , RouteData(RouteData)
+  , RouteProps
+  , Router
+  , URL
+  , URLPattern
+  , routeClassLens
+  , routeIdLens
+  , routeUrlLens
+  , withoutIndex
+  ) where
 
 import Prelude ((<>), class Eq, class Show, show)
 import Control.Comonad.Cofree ((:<), Cofree)
