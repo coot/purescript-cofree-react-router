@@ -3,17 +3,23 @@ module Example.Main where
 import Data.StrMap as M
 import Control.Comonad.Cofree ((:<))
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (Error)
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Types (htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
+import Data.Either (Either, either)
+import Data.Foreign.Class (class IsForeign, readProp)
+import Data.Function (const)
+import Data.HObject.Record (hObjToRecord)
 import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
+import Data.Newtype (class Newtype, unwrap)
 import Data.Nullable (toMaybe)
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
-import Prelude (Unit, bind, pure, unit, void, ($), (<<<), (<>), (>>=))
+import Prelude (Unit, bind, const, id, pure, unit, void, ($), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
 import React.Router (IndexRoute(..), Route(..), RouteProps, Router, browserRouterClass, link', (:+))
@@ -41,13 +47,25 @@ usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
                ]
         ]
 
+newtype User = User {userId :: String}
+
+instance isForeignUser :: IsForeign User where
+  read obj = do
+    userId <- readProp "userId" obj
+    pure $ User { userId }
+
+derive instance newtypeUser :: Newtype User _
+
 user :: ReactClass RouteProps
 user = createClass $ (spec unit render) { displayName = "User" }
   where
     render this = do
       props <- getProps this
-      let userId = M.lookup "userId" props.args
-          uLink = maybe' (\_ -> text "no such user") (\uId -> link' ("/" <> uId) [ text $ "User " <> uId ]) userId
+      let user = either (const $ User {userId: "1"}) id (hObjToRecord props.args :: Either Error User)
+      let userId =  (unwrap user).userId
+          uLink = if userId /= ""
+                    then text $ "User " <> userId
+                    else text "no such user"
       chrn <- getChildren this
       pure $ div'
         [ h2' [ text "User component" ]
@@ -59,27 +77,38 @@ userBooksIndex :: ReactClass RouteProps
 userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksIndex" }
   where
     render this = do
-      userId <- getProps this >>= (pure <<< M.lookup "userId" <<< _.args)
+      uID <- getProps this >>= (pure <<< _.userId <<< unwrap <<< either (const (User {userId: ""})) id <<< hObjToRecord <<<  _.args)
       chrn <- getChildren this
       pure $ div'
-        [ h3' [ link' "/1" [ text "UserBooksIndex component" ] ]
+        [ h3' [ link' ("/" <> uID) [ text "UserBooksIndex component" ] ]
         , div'
-          [ div' [ link' "/1/book/fp-programming" [ text "Functional Programming" ] ]
-          , div' [ link' "/1/book/grothendieck-galois-theory" [ text "Grothendick Galois Theory" ] ]
-          , div' [ link' "/1/book/category-theory" [ text "Category Theory for the Working Mathematician" ]]
+          [ div' [ link' ("/" <> uID <> "/book/fp-programming") [ text "Functional Programming" ] ]
+          , div' [ link' ("/" <> uID <> "/book/grothendieck-galois-theory") [ text "Grothendick Galois Theory" ] ]
+          , div' [ link' ("/" <> uID <> "/book/category-theory") [ text "Category Theory for the Working Mathematician" ]]
           ]
         , div' chrn
         ]
+
+
+newtype Book = Book { bookTitle :: String }
+
+derive instance newtypeBook :: Newtype Book _
+
+instance isForeignBook :: IsForeign Book where
+  read obj = do
+    bookTitle <- readProp "bookTitle" obj
+    pure $ Book { bookTitle }
 
 book :: ReactClass RouteProps
 book = createClass $ (spec unit render) { displayName = "Book" }
   where
     render this = do
-      p <- getProps this
-      let bookTitle = case M.lookup "bookTitle" p.args of
-            Just "fp-programming" -> "Functional Programing"
-            Just "grothendieck-galois-theory" -> "Grothendick Galois Theory"
-            Just "category-theory" -> "Category Theory for the Working Mathematician"
+      props <- getProps this
+      let book = either (const $ Book {bookTitle: ""}) id (hObjToRecord props.args :: Either Error Book)
+      let bookTitle = case (unwrap book).bookTitle of
+            "fp-programming" -> "Functional Programing"
+            "grothendieck-galois-theory" -> "Grothendick Galois Theory"
+            "category-theory" -> "Category Theory for the Working Mathematician"
             _ -> "404 boook ;"
       pure $ div'
         [ h3' [ text "Book component" ]
