@@ -3,19 +3,20 @@ module React.Router.Parser
     , match
     ) where
 
-import Prelude ((<<<), (>), (<=), (==), (<$>), (<*>), (<>), ($), bind, id, map)
-import Control.MonadPlus (guard)
 import Data.Array as A
-import Data.Either (fromRight)
 import Data.StrMap as SM
-import Data.Maybe (Maybe(..), maybe)
 import Data.String as S
+import Control.MonadPlus (guard)
+import Data.Either (fromRight)
+import Data.HObject (TupleTree, mkTree, (-=))
+import Data.Maybe (Maybe(..), maybe)
 import Data.String.Regex (regex, split) as Reg
 import Data.String.Regex.Flags (global) as Reg
-import Data.Tuple (Tuple(..))
 import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
-
+import Prelude ((<<<), (>), (<=), (==), (<$>), (<*>), (<>), ($), bind, id, map)
+import React.DOM (u)
 import React.Router.Types (URL, PathPart(PathPart), Query, Hash(Hash), URLPattern, RouteData(RouteData))
 
 parseQuery :: (String -> String) -> String -> Maybe Query
@@ -56,23 +57,24 @@ match :: URLPattern -> URL -> Maybe (Tuple URL RouteData)
 match pat url = 
     if  A.length patPath > A.length url.path
         then Nothing
-        else maybe Nothing wrap $ go (A.zip patPath url.path) SM.empty
+        else maybe Nothing wrap $ go (A.zip patPath url.path) []
     where
         patPath :: Array PathPart
         patPath = (parse id pat).path
 
-        go :: Array (Tuple PathPart PathPart) -> (SM.StrMap String) -> Maybe (SM.StrMap String)
+        go :: Array (Tuple PathPart PathPart) -> Array (Tuple String (TupleTree String)) -> Maybe (Array (Tuple String (TupleTree String)))
         go ps args =
-            case head of
-                 Nothing -> Just args
-                 Just (Tuple (PathPart p) (PathPart u)) -> case S.take 1 p of
-                                   ":" -> go (maybe [] id tail) (args <> SM.singleton (S.drop 1 p) u)
-                                   _ -> if (p == u)
-                                           then go (maybe [] id tail) args
-                                           else Nothing
+          case head of
+            Nothing -> Just args
+            Just (Tuple (PathPart p) (PathPart u)) ->
+              case S.take 1 p of
+                ":" -> go (maybe [] id tail) $ A.snoc args ((S.drop 1 p) -= u)
+                _ -> if (p == u)
+                       then go (maybe [] id tail) args
+                       else Nothing
             where
               head = A.head ps
               tail = A.tail ps
               
-        wrap :: SM.StrMap String -> Maybe (Tuple URL RouteData)
+        wrap :: Array (Tuple String (TupleTree String)) -> Maybe (Tuple URL RouteData)
         wrap args = Just $ Tuple (url { path = A.drop (A.length patPath) url.path }) (RouteData args url.query url.hash)

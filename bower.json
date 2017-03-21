@@ -25,7 +25,8 @@
     "purescript-maps": "^2.1.2",
     "purescript-debug": "^2.0.0",
     "purescript-js-history": "^2.0.2",
-    "purescript-react-dom": "^2.0.0"
+    "purescript-react-dom": "^2.0.0",
+    "purescript-homogeneous-objects": "^3.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^2.0.0",

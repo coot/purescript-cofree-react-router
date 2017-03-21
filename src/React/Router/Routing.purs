@@ -6,6 +6,7 @@ module React.Router.Routing
 import Data.Array as A
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Data.Foldable (foldl, foldr)
+import Data.HObject (hObj)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..), fst, snd)
 import Global (decodeURIComponent)
@@ -61,7 +62,7 @@ matchRouter url router = case shake $ go url router of
            Nothing -> Nothing
            Just (Tuple urlRest (RouteData args query hash)) ->
              case route of
-                  Route id _ _ -> Just { url: urlRest , props: { id, args, query, hash } }
+                  Route id _ _ -> Just { url: urlRest , props: { id, args: hObj args, query, hash } }
 
     -- traverse Cofree and match routes
     go :: URL -> Router -> Cofree Array (Maybe {url :: URL, props :: RouteProps, route :: Route, indexRoute :: Maybe IndexRoute})

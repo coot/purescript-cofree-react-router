@@ -17,14 +17,15 @@ module React.Router.Types
   , withoutIndex
   ) where
 
-import Prelude ((<>), class Eq, class Show, show)
 import Control.Comonad.Cofree ((:<), Cofree)
+import Data.HObject (HObject, TupleTree, hObj)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.StrMap (StrMap())
+import Data.StrMap (StrMap)
 import Data.Tuple (Tuple(..))
-import Optic.Types (Lens')
 import Optic.Lens (lens)
+import Optic.Types (Lens')
+import Prelude ((<>), class Eq, class Show, show)
 import React (ReactClass)
 
 newtype PathPart = PathPart String
@@ -49,14 +50,14 @@ derive instance eqHash :: Eq Hash
 
 type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
 
-data RouteData = RouteData (StrMap String) Query Hash
+data RouteData = RouteData (Array (Tuple String (TupleTree String))) Query Hash
 
 instance showRouteData :: Show RouteData where
     show (RouteData a q h) = "RouteData " <> " " <> show a <> " " <> show q <> " " <> show h
 
 type URLPattern = String
 
-type RouteProps = { id :: String, args :: StrMap String, query :: StrMap String, hash :: Hash }
+type RouteProps = { id :: String, args :: HObject String, query :: StrMap String, hash :: Hash }
 
 type RouteClass = ReactClass RouteProps
 
