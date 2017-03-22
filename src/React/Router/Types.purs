@@ -33,7 +33,7 @@ newtype PathPart = PathPart String
 derive instance newTypePathPart :: Newtype PathPart _
 
 instance showPathPart :: Show PathPart where
-    show (PathPart s) = "(PathPart \"" <> s <> "\")"
+  show (PathPart s) = "(PathPart \"" <> s <> "\")"
 
 derive instance eqPathPart :: Eq PathPart
 
@@ -44,7 +44,7 @@ newtype Hash = Hash String
 derive instance newHash :: Newtype Hash _
 
 instance showHash :: Show Hash where
-    show (Hash s) = "Hash " <> s
+  show (Hash s) = "Hash " <> s
 
 derive instance eqHash :: Eq Hash
 
@@ -53,7 +53,7 @@ type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
 data RouteData = RouteData (Array (Tuple String (TupleTree String))) Query Hash
 
 instance showRouteData :: Show RouteData where
-    show (RouteData a q h) = "RouteData " <> " " <> show a <> " " <> show q <> " " <> show h
+  show (RouteData a q h) = "RouteData " <> " " <> show a <> " " <> show q <> " " <> show h
 
 type URLPattern = String
 
@@ -70,7 +70,7 @@ data Route = Route String URLPattern RouteClass
 data IndexRoute = IndexRoute String RouteClass
 
 instance showRoute :: Show Route where
-    show (Route id_ url _) = "<Route \"" <> id_ <> "\" \"" <> url <> "\">"
+  show (Route id_ url _) = "<Route \"" <> id_ <> "\" \"" <> url <> "\">"
 
 routeIdLens :: Lens' Route String
 routeIdLens = lens (\(Route id _ _) -> id) (\(Route _ url cls) id -> Route id url cls)
