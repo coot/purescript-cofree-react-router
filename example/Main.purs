@@ -1,41 +1,48 @@
 module Example.Main where
 
-import Data.StrMap as M
+import Prelude
 import Control.Comonad.Cofree ((:<))
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (Error)
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.HTML.Types (htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
-import Data.Either (Either, either)
-import Data.Foreign.Class (class IsForeign, readProp)
-import Data.Function (const)
-import Data.HObject.Record (hObjToRecord)
-import Data.Maybe (Maybe(..), fromJust, maybe, maybe')
-import Data.Newtype (class Newtype, unwrap)
+import Data.Maybe (Maybe(..), fromJust)
+import Data.Newtype (unwrap)
 import Data.Nullable (toMaybe)
 import Data.Tuple (Tuple(..))
+import Optic.Getter (view)
 import Partial.Unsafe (unsafePartial)
-import Prelude (Unit, bind, const, id, pure, unit, void, ($), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
 import React.Router (IndexRoute(..), Route(..), RouteProps, Router, browserRouterClass, link', (:+))
+import React.Router.Types (argsLens)
 import ReactDOM (render)
+import Routing.Match.Class (int, lit, str)
 
-home :: ReactClass RouteProps
+data Locations
+  = Home
+  | User Int
+  | Book String
+
+instance showLocations :: Show Locations where
+  show Home = "/"
+  show (User uid) = show uid
+  show (Book title) = title
+
+home :: ReactClass (RouteProps Locations)
 home = createClass $ (spec unit render) { displayName = "Home" }
   where 
     render this = do
       chrn <- getChildren this
       pure $ div'
-        [ h1' [ link' "/" [text "Home component"] ] 
+        [ h1' [ link' (show Home) [text "Home component"] ] 
         , div' chrn
         ]
 
-usersIndex :: ReactClass RouteProps
+usersIndex :: ReactClass (RouteProps Locations)
 usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
   where
     render this = do
@@ -47,24 +54,17 @@ usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
                ]
         ]
 
-newtype User = User {userId :: String}
-
-instance isForeignUser :: IsForeign User where
-  read obj = do
-    userId <- readProp "userId" obj
-    pure $ User { userId }
-
-derive instance newtypeUser :: Newtype User _
-
-user :: ReactClass RouteProps
+user :: ReactClass (RouteProps Locations)
 user = createClass $ (spec unit render) { displayName = "User" }
   where
     render this = do
       props <- getProps this
-      let user = either (const $ User {userId: "1"}) id (hObjToRecord props.args :: Either Error User)
-      let userId =  (unwrap user).userId
-          uLink = if userId /= ""
-                    then text $ "User " <> userId
+      let uID =
+            case (unwrap props).args of
+              User uID -> uID
+              _ -> 0
+          uLink = if uID /= 0
+                    then text $ "User " <> show uID
                     else text "no such user"
       chrn <- getChildren this
       pure $ div'
@@ -73,42 +73,36 @@ user = createClass $ (spec unit render) { displayName = "User" }
         , div' chrn
         ]
 
-userBooksIndex :: ReactClass RouteProps
+userBooksIndex :: ReactClass (RouteProps Locations)
 userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksIndex" }
   where
     render this = do
-      uID <- getProps this >>= (pure <<< _.userId <<< unwrap <<< either (const (User {userId: ""})) id <<< hObjToRecord <<<  _.args)
+      props <- getProps this
+      let  uID =
+            case (unwrap props).args of
+              User uid -> uid
+              _ -> 0
       chrn <- getChildren this
       pure $ div'
-        [ h3' [ link' ("/" <> uID) [ text "UserBooksIndex component" ] ]
+        [ h3' [ link' ("/" <> show uID) [ text "UserBooksIndex component" ] ]
         , div'
-          [ div' [ link' ("/" <> uID <> "/book/fp-programming") [ text "Functional Programming" ] ]
-          , div' [ link' ("/" <> uID <> "/book/grothendieck-galois-theory") [ text "Grothendick Galois Theory" ] ]
-          , div' [ link' ("/" <> uID <> "/book/category-theory") [ text "Category Theory for the Working Mathematician" ]]
+          [ div' [ link' ("/" <> show uID <> "/book/fp-programming") [ text "Functional Programming" ] ]
+          , div' [ link' ("/" <> show uID <> "/book/grothendieck-galois-theory") [ text "Grothendick Galois Theory" ] ]
+          , div' [ link' ("/" <> show uID <> "/book/category-theory") [ text "Category Theory for the Working Mathematician" ]]
           ]
         , div' chrn
         ]
 
-
-newtype Book = Book { bookTitle :: String }
-
-derive instance newtypeBook :: Newtype Book _
-
-instance isForeignBook :: IsForeign Book where
-  read obj = do
-    bookTitle <- readProp "bookTitle" obj
-    pure $ Book { bookTitle }
-
-book :: ReactClass RouteProps
+book :: ReactClass (RouteProps Locations)
 book = createClass $ (spec unit render) { displayName = "Book" }
   where
     render this = do
       props <- getProps this
-      let book = either (const $ Book {bookTitle: ""}) id (hObjToRecord props.args :: Either Error Book)
-      let bookTitle = case (unwrap book).bookTitle of
-            "fp-programming" -> "Functional Programing"
-            "grothendieck-galois-theory" -> "Grothendick Galois Theory"
-            "category-theory" -> "Category Theory for the Working Mathematician"
+      let book = (view argsLens props) 
+          bookTitle = case book of
+            Book "fp-programming" -> "Functional Programing"
+            Book "grothendieck-galois-theory" -> "Grothendick Galois Theory"
+            Book "category-theory" -> "Category Theory for the Working Mathematician"
             _ -> "404 boook ;"
       pure $ div'
         [ h3' [ text "Book component" ]
@@ -116,12 +110,12 @@ book = createClass $ (spec unit render) { displayName = "Book" }
         ]
 
       
-router :: Router
+router :: Router Locations
 router =
-  (Tuple (Route "home" "/" home) (Just $ IndexRoute "user-index" usersIndex))  :<
-    [ Route "user" ":userId" user :+ []
-    , Route "book-index" ":userId" userBooksIndex :+
-      [ Route "book" "book/:bookTitle" book :+ []
+  (Tuple (Route "home" (Home <$ (lit "")) home) (Just $ IndexRoute "user-index" usersIndex))  :<
+    [ Route "user" (User <$> int) user :+ []
+    , Route "book-index" (User <$> int) userBooksIndex :+
+      [ Route "book" (Book <$> (lit "book" *> str)) book :+ []
       ]
     ]
 
