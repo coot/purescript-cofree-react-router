@@ -33,8 +33,8 @@ type RouterState =
   , search :: String
   }
 
-type RouterProps notFoundProps =
-  { router :: Router
+type RouterProps locations notFoundProps =
+  { router :: Router locations
   , notFound :: Maybe
     { cls :: ReactClass notFoundProps
     , props :: notFoundProps
@@ -51,7 +51,7 @@ getLocation = do
   s <- search l
   pure { hash: h, pathname: p, search: s }
   
-browserRouter :: forall notfound. ReactSpec (RouterProps notfound) RouterState (history :: HISTORY, dom :: DOM)
+browserRouter :: forall locations notfound. ReactSpec (RouterProps locations notfound) RouterState (history :: HISTORY, dom :: DOM)
 browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = getLocation
@@ -82,7 +82,7 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
       loc <- getLocation
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
 
-browserRouterClass :: forall notfound. ReactClass (RouterProps notfound)
+browserRouterClass :: forall locations notfound. ReactClass (RouterProps locations notfound)
 browserRouterClass = createClass browserRouter
 
 type LinkProps = {to :: String, props :: Array Props}
@@ -114,12 +114,12 @@ link = createElement linkClass
 link' :: String -> Array ReactElement -> ReactElement
 link' to = link {to, props: []}
 
-routeSpec :: ReactSpec RouteProps Unit _
+routeSpec :: forall locations. ReactSpec (RouteProps locations) Unit _
 routeSpec = (spec unit render) { displayName = "Route" }
   where
     render this = do
       chrn <- getChildren this
       pure $ div' chrn
 
-routeClass :: ReactClass RouteProps
+routeClass :: forall locations. ReactClass (RouteProps locations)
 routeClass = createClass routeSpec

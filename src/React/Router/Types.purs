@@ -6,27 +6,28 @@ module React.Router.Types
   , Query
   , Route(Route)
   , RouteClass
-  , RouteData(RouteData)
   , RouteProps
   , Router
   , URL
-  , URLPattern
-  , routeClassLens
-  , routeIdLens
-  , routeUrlLens
   , withoutIndex
+  -- lenses
+  , urlLens
+  , idLens
+  , argsLens
   ) where
 
+import Prelude
+
 import Control.Comonad.Cofree ((:<), Cofree)
-import Data.HObject (HObject, TupleTree, hObj)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.StrMap (StrMap)
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
 import Optic.Types (Lens')
-import Prelude ((<>), class Eq, class Show, show)
 import React (ReactClass)
+import Routing.Types (Route) as R
+import Routing.Match (Match) as R
 
 newtype PathPart = PathPart String
 
@@ -48,38 +49,34 @@ instance showHash :: Show Hash where
 
 derive instance eqHash :: Eq Hash
 
-type URL = { path:: Array PathPart, query:: Query, hash:: Hash }
+-- parsed pathname and query string
+type URL = R.Route
 
-data RouteData = RouteData (Array (Tuple String (TupleTree String))) Query Hash
+newtype RouteProps args = RouteProps { id :: String, args :: args }
 
-instance showRouteData :: Show RouteData where
-  show (RouteData a q h) = "RouteData " <> " " <> show a <> " " <> show q <> " " <> show h
+idLens :: forall args. Lens' (RouteProps args) String
+idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
-type URLPattern = String
+argsLens :: forall args. Lens' (RouteProps args) args
+argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
-type RouteProps = { id :: String, args :: HObject String, query :: StrMap String, hash :: Hash }
+derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
-type RouteClass = ReactClass RouteProps
+type RouteClass args = ReactClass (RouteProps args)
 
 -- | Route type
 -- | The first parameter is the id property
-data Route = Route String URLPattern RouteClass
+data Route args = Route String (R.Match args) (RouteClass args)
 
 -- | IndexRoute type
 -- | The first parameter is the id property
-data IndexRoute = IndexRoute String RouteClass
+data IndexRoute args = IndexRoute String (RouteClass args)
 
-instance showRoute :: Show Route where
-  show (Route id_ url _) = "<Route \"" <> id_ <> "\" \"" <> url <> "\">"
+instance showRoute :: Show (Route args) where
+  show (Route id_ _ _) = "<Route \"" <> id_ <> "\">"
 
-routeIdLens :: Lens' Route String
-routeIdLens = lens (\(Route id _ _) -> id) (\(Route _ url cls) id -> Route id url cls)
-
-routeUrlLens :: Lens' Route URLPattern
-routeUrlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
-
-routeClassLens :: Lens' Route (ReactClass RouteProps)
-routeClassLens = lens (\(Route _ _ cls) -> cls) (\(Route id url _) cls -> Route id url cls)
+urlLens :: forall args. Lens' (Route args) (R.Match args)
+urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
 -- | Router
 -- | ```
@@ -97,9 +94,12 @@ routeClassLens = lens (\(Route _ _ cls) -> cls) (\(Route id url _) cls -> Route 
 -- | ```
 
 
-type Router = Cofree Array (Tuple Route (Maybe IndexRoute))
+type Router args = Cofree Array (Tuple (Route args) (Maybe (IndexRoute args)))
 
-withoutIndex :: Route -> Array Router -> Router
+withoutIndex
+  :: forall args. Route args
+  -> Array (Router args)
+  -> Router args
 withoutIndex r rs = Tuple r Nothing :< rs
 
 infixr 6 withoutIndex as :+
