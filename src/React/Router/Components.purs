@@ -4,8 +4,6 @@ module React.Router.Components
   , linkSpec
   , link
   , link'
-  , routeSpec
-  , routeClass
   ) where
 
 import Control.Monad.Eff (Eff)
@@ -113,13 +111,3 @@ link = createElement linkClass
 
 link' :: String -> Array ReactElement -> ReactElement
 link' to = link {to, props: []}
-
-routeSpec :: forall locations. ReactSpec (RouteProps locations) Unit _
-routeSpec = (spec unit render) { displayName = "Route" }
-  where
-    render this = do
-      chrn <- getChildren this
-      pure $ div' chrn
-
-routeClass :: forall locations. ReactClass (RouteProps locations)
-routeClass = createClass routeSpec
