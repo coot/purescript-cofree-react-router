@@ -9,6 +9,7 @@ import DOM.HTML.Types (htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
+import Data.Array as A
 import Data.Maybe (Maybe(..), fromJust)
 import Data.Newtype (unwrap)
 import Data.Nullable (toMaybe)
@@ -32,7 +33,7 @@ instance showLocations :: Show Locations where
   show (User uid) = show uid
   show (Book title) = title
 
-home :: ReactClass (RouteProps Locations)
+home :: ReactClass (RouteProps (Array Locations))
 home = createClass $ (spec unit render) { displayName = "Home" }
   where 
     render this = do
@@ -42,7 +43,7 @@ home = createClass $ (spec unit render) { displayName = "Home" }
         , div' chrn
         ]
 
-usersIndex :: ReactClass (RouteProps Locations)
+usersIndex :: ReactClass (RouteProps (Array Locations))
 usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
   where
     render this = do
@@ -54,13 +55,13 @@ usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
                ]
         ]
 
-user :: ReactClass (RouteProps Locations)
+user :: ReactClass (RouteProps (Array Locations))
 user = createClass $ (spec unit render) { displayName = "User" }
   where
     render this = do
       props <- getProps this
       let uID =
-            case (unwrap props).args of
+            case unsafePartial $ fromJust $ A.last (unwrap props).args of
               User uID -> uID
               _ -> 0
           uLink = if uID /= 0
@@ -73,13 +74,13 @@ user = createClass $ (spec unit render) { displayName = "User" }
         , div' chrn
         ]
 
-userBooksIndex :: ReactClass (RouteProps Locations)
+userBooksIndex :: ReactClass (RouteProps (Array Locations))
 userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksIndex" }
   where
     render this = do
       props <- getProps this
       let  uID =
-            case (unwrap props).args of
+            case unsafePartial $ fromJust $ A.last $ (unwrap props).args of
               User uid -> uid
               _ -> 0
       chrn <- getChildren this
@@ -93,12 +94,12 @@ userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksInde
         , div' chrn
         ]
 
-book :: ReactClass (RouteProps Locations)
+book :: ReactClass (RouteProps (Array Locations))
 book = createClass $ (spec unit render) { displayName = "Book" }
   where
     render this = do
       props <- getProps this
-      let book = (view argsLens props) 
+      let book = unsafePartial $ fromJust $ A.last (view argsLens props) 
           bookTitle = case book of
             Book "fp-programming" -> "Functional Programing"
             Book "grothendieck-galois-theory" -> "Grothendick Galois Theory"

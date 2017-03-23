@@ -5,7 +5,6 @@ module React.Router.Routing
 
 import Prelude
 import Data.Array as A
-import Data.List as L
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
@@ -17,10 +16,9 @@ import Optic.Getter (view)
 import Optic.Setter (set)
 import React (ReactElement, createElement)
 import React.Router.Match (runMatch)
-import React.Router.Types (IndexRoute(..), PathPart(..), Route(..), RouteProps, Router, URL, idLens, urlLens)
+import React.Router.Types (IndexRoute(..), Route(..), RouteProps(RouteProps), Router, URL, idLens, urlLens)
+import React.Router.Utils as U
 import Routing.Parser (parse) as R
-import Routing.Types (RoutePart(..)) as R
-import Routing.Types (Route) as R
 
 -- | remove all branches that are annotated with `Nothing`
 -- | it should also elminate not fully consumed URLs
@@ -86,24 +84,36 @@ runRouter
    . String
    -> Router args
    -> Maybe ReactElement
-runRouter urlStr router = createRouteElement <$> matchRouter (R.parse decodeURIComponent urlStr) router
+runRouter urlStr router = createRouteElement [] <$> matchRouter (R.parse decodeURIComponent urlStr) router
     where
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree Array {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+      :: Array args
+      -> Cofree Array {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
       -> ReactElement
-    createRouteElement cof = asElement (head cof) (tail cof)
+    createRouteElement args cof = asElement (head cof) (tail cof) args
       where
         asElement
           :: {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
           -> Array (Cofree Array {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
+          -> Array args
           -> ReactElement
-        asElement {url, props, route, indexRoute} [] =
-          case route of (Route _ _ cls) -> createElement cls props (addIndex [])
+        asElement {url, props: props@(RouteProps propsRec), route, indexRoute} [] argsArr =
+          case route of (Route _ _ cls) -> createElement cls newProps (addIndex [])
           where
             -- add index if indexRoute is present
             addIndex :: Array ReactElement -> Array ReactElement
-            addIndex children = maybe children (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) children) indexRoute
-        asElement {url, props, route, indexRoute} cofs =
-          case route of (Route _ _ cls) -> createElement cls props (createRouteElement <$> cofs)
+            addIndex children = maybe children (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id newProps) []) children) indexRoute
+
+            newArgsArr = A.snoc argsArr propsRec.args
+
+            newProps :: RouteProps (Array args)
+            newProps = RouteProps (propsRec { args = newArgsArr })
+
+        asElement {url, props: props@(RouteProps propsRec), route, indexRoute} cofs argsArr =
+          case route of (Route _ _ cls) ->
+            createElement cls newProps (createRouteElement newArgsArr <$> cofs)
+              where
+                newArgsArr = A.snoc argsArr propsRec.args
+                newProps = RouteProps (propsRec { args = newArgsArr })

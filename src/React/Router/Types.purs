@@ -6,7 +6,7 @@ module React.Router.Types
   , Query
   , Route(Route)
   , RouteClass
-  , RouteProps
+  , RouteProps(..)
   , Router
   , URL
   , withoutIndex
@@ -17,17 +17,17 @@ module React.Router.Types
   ) where
 
 import Prelude
-
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.NonEmpty (NonEmpty)
 import Data.StrMap (StrMap)
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
-import Optic.Types (Lens')
+import Optic.Types (Lens, Lens')
 import React (ReactClass)
-import Routing.Types (Route) as R
 import Routing.Match (Match) as R
+import Routing.Types (Route) as R
 
 newtype PathPart = PathPart String
 
@@ -57,12 +57,12 @@ newtype RouteProps args = RouteProps { id :: String, args :: args }
 idLens :: forall args. Lens' (RouteProps args) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
-argsLens :: forall args. Lens' (RouteProps args) args
+argsLens :: forall args args'. Lens (RouteProps args) (RouteProps args') args args'
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
 derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
-type RouteClass args = ReactClass (RouteProps args)
+type RouteClass args = ReactClass (RouteProps (Array args))
 
 -- | Route type
 -- | The first parameter is the id property
