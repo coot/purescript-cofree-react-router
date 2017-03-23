@@ -23,7 +23,7 @@ import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, g
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Routing (runRouter)
-import React.Router.Types (Router, RouteProps)
+import React.Router.Types (Router)
 
 type RouterState = 
   { hash :: String

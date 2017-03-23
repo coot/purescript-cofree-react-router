@@ -6,7 +6,8 @@ module React.Router.Types
   , Query
   , Route(Route)
   , RouteClass
-  , RouteProps(..)
+  , RouteProps_(..)
+  , RouteProps
   , Router
   , URL
   , withoutIndex
@@ -52,19 +53,21 @@ derive instance eqHash :: Eq Hash
 -- parsed pathname and query string
 type URL = R.Route
 
-newtype RouteProps args = RouteProps { id :: String, args :: args }
+newtype RouteProps_ args = RouteProps { id :: String, args :: args }
 
-idLens :: forall args. Lens' (RouteProps args) String
+type RouteProps args = RouteProps_ (NonEmpty Array args)
+
+idLens :: forall args. Lens' (RouteProps_ args) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
-argsLens :: forall args args'. Lens (RouteProps args) (RouteProps args') args args'
+argsLens :: forall args args'. Lens (RouteProps_ args) (RouteProps_ args') args args'
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
-derive instance newtypeRouteProps :: Newtype (RouteProps args) _
+derive instance newtypeRouteProps :: Newtype (RouteProps_ args) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass args = ReactClass (RouteProps (NonEmpty Array args))
+type RouteClass args = ReactClass (RouteProps_ (NonEmpty Array args))
 
 -- | Route type
 -- | The first parameter is the id property
