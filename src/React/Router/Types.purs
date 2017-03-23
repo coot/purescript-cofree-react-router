@@ -64,7 +64,7 @@ derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass args = ReactClass (RouteProps (Array args))
+type RouteClass args = ReactClass (RouteProps (NonEmpty Array args))
 
 -- | Route type
 -- | The first parameter is the id property

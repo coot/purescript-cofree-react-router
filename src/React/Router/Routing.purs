@@ -10,6 +10,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
+import Data.NonEmpty (NonEmpty)
 import Data.Tuple (Tuple(..), fst, snd)
 import Global (decodeURIComponent)
 import Optic.Getter (view)
@@ -92,14 +93,14 @@ runRouter urlStr router = createRouteElement [] <$> matchRouter (R.parse decodeU
       :: Array args
       -> Cofree Array {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
       -> ReactElement
-    createRouteElement args cof = asElement (head cof) (tail cof) args
+    createRouteElement args cof = asElement args (head cof) (tail cof)
       where
         asElement
-          :: {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+          :: Array args
+          -> {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
           -> Array (Cofree Array {url :: URL, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
-          -> Array args
           -> ReactElement
-        asElement {url, props: props@(RouteProps propsRec), route, indexRoute} [] argsArr =
+        asElement argsArr {url, props: props@(RouteProps propsRec), route, indexRoute} [] =
           case route of (Route _ _ cls) -> createElement cls newProps (addIndex [])
           where
             -- add index if indexRoute is present
@@ -108,12 +109,12 @@ runRouter urlStr router = createRouteElement [] <$> matchRouter (R.parse decodeU
 
             newArgsArr = A.snoc argsArr propsRec.args
 
-            newProps :: RouteProps (Array args)
-            newProps = RouteProps (propsRec { args = newArgsArr })
+            newProps = RouteProps (propsRec { args = U.snoc argsArr propsRec.args })
 
-        asElement {url, props: props@(RouteProps propsRec), route, indexRoute} cofs argsArr =
+        asElement argsArr {url, props: props@(RouteProps propsRec), route, indexRoute} cofs =
           case route of (Route _ _ cls) ->
             createElement cls newProps (createRouteElement newArgsArr <$> cofs)
               where
-                newArgsArr = A.snoc argsArr propsRec.args
-                newProps = RouteProps (propsRec { args = newArgsArr })
+              newArgsArr = A.snoc argsArr propsRec.args
+
+              newProps = RouteProps (propsRec { args = U.snoc argsArr propsRec.args })
