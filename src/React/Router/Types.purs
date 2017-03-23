@@ -62,6 +62,8 @@ argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RoutePro
 
 derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
+-- | React component which will be mounted at matching node
+-- | It recieves array of all matching routes.
 type RouteClass args = ReactClass (RouteProps (Array args))
 
 -- | Route type
@@ -92,8 +94,6 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |             ]
 -- |         ]
 -- | ```
-
-
 type Router args = Cofree Array (Tuple (Route args) (Maybe (IndexRoute args)))
 
 withoutIndex
