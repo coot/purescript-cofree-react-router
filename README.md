@@ -35,7 +35,7 @@ the
 spec to use hash history or in memory history for server side rendering.
 
 ## Example
-Checkout the included example. To build and run it type
+Checkout the included example. To build and run type
 ```bash
 npm run example
 ```
