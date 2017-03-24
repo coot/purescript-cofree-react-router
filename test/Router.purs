@@ -5,45 +5,52 @@ module Test.Router (
 import Data.Array as A
 import Data.StrMap as SM
 import Control.Comonad.Cofree (Cofree, unfoldCofree, (:<))
+import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
+import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
+import Optic.Getter (view)
 import Partial.Unsafe (unsafePartial)
+import Prelude (unit)
 import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
 import React.Router (matchRouter, runRouter)
-import React.Router.Parser (parse)
-import React.Router.Types (IndexRoute(..), Route(..), RouteClass, RouteProps, Router, URL, (:+))
+import React.Router.Types (IndexRoute(..), Route(..), RouteClass, RouteProps_, RouteProps, Router, URL, idLens, (:+))
+import Routing.Match.Class (int, lit)
+import Routing.Parser (parse) as R
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
 import Prelude hiding (div)
 
-routeClass :: RouteClass
-routeClass = createClassStateless (\props -> div [_id props.id] [text $ "route: " <> props.id])
+routeClass :: forall args. RouteClass args
+routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
 
-routeClass2 :: RouteClass
+routeClass2 :: forall args. RouteClass args
 routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
-                    pure $ div [_id props.id] children)
+                    pure $ div [_id (view idLens props)] children)
 
-indexRouteClass :: RouteClass
+indexRouteClass :: forall args. RouteClass args
 indexRouteClass = 
     let clsSpec = (spec 0) $
         (\this -> do
                 props <- getProps this
-                pure $ div [_id props.id, className "index"] []
+                pure $ div [_id (view idLens props), className "index"] []
         )
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
-idTree :: Cofree Array {url :: URL, props :: RouteProps, route :: Route, indexRoute :: Maybe IndexRoute}
-       -> Cofree Array {id :: String, indexId :: Maybe String}
-idTree = map (\{url, props, route, indexRoute} -> {id: props.id, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
+idTree
+  :: forall args
+   . Cofree Array {url :: URL, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+  -> Cofree Array {id :: String, indexId :: Maybe String}
+idTree = map (\{url, props, route, indexRoute} -> {id: (view idLens props), indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
 foreign import getIds :: ReactElement -> Array String
 
@@ -108,32 +115,33 @@ testSuite :: forall eff. TestSuite eff
 testSuite =
     suite "Router" do
         suite "runRouter"
-            let router :: Router
-                router = Route "main" "/" routeClass :+
-                            [ Route "home" "home" routeClass :+ []
-                            , Tuple (Route "user" "user/:user_id" routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
-                                [ Route "book" "books/:book_id" routeClass :+
-                                    [ Route "pages" "pages" routeClass :+
-                                        [ Route "page" ":page_id" routeClass :+ [] ]
-                                    ]
-                                ]
-                            , Route "user-settings" "user/:user_id/settings" routeClass :+ []
-                            ]
-
-                router2 :: Router
-                router2 = Route "main" "/" routeClass2 :+
-                            [ Route "home" "home" routeClass2 :+ 
-                                [ Route "user" "user" routeClass2 :+ []
-                                ]
-                            , Route "user-settings" "home/user/settings" routeClass :+ []
-                            ]
-
-                router3 :: Router
-                router3 = Route "main" "/" routeClass2 :+
-                          [ Tuple (Route "home" "home" routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
-                              [ Tuple (Route "users" "users" routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
-                              , Route "user" "users/:user_id" routeClass2 :+ []
+            let
+                router :: Router Unit
+                router = Route "main" (unit <$ lit "") routeClass :+
+                          [ Route "home" (unit <$ lit "home") routeClass :+ []
+                          , Tuple (Route "user" (unit <$ (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
+                            [ Route "book" (unit <$ (lit "books" *> int)) routeClass :+
+                              [ Route "pages" (unit <$ lit "pages") routeClass :+
+                                [ Route "page" (unit <$ int) routeClass :+ [] ]
                               ]
+                            ]
+                            , Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) routeClass :+ []
+                          ]
+
+                router2 :: Router Unit
+                router2 = Route "main" (unit <$ lit "") routeClass2 :+
+                            [ Route "home" (unit <$ lit "home") routeClass2 :+ 
+                              [ Route "user" (unit <$ lit "user") routeClass2 :+ []
+                              ]
+                              , Route "user-settings" (unit <$ (lit "home" *> lit "user" *> lit "settings")) routeClass :+ []
+                            ]
+
+                router3 :: Router Unit
+                router3 = Route "main" (unit <$ lit "") routeClass2 :+
+                          [ Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
+                            [ Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
+                            , Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ []
+                            ]
                           ]
 
                 checkElementTree router_ url expected =
@@ -145,8 +153,13 @@ testSuite =
                             ("children trees are not equal: got\n" <> (showChildrenTree chTree) <> "\nexpected\n" <> (showChildrenTree expected)) $
                             eqCofreeS chTree expected
 
+                checkTree
+                  :: Router Unit
+                  -> String
+                  -> Cofree Array { id :: String, indexId :: Maybe String }
+                  -> Aff _ Unit
                 checkTree router_ url expected =
-                  case idTree <$> matchRouter (parse decodeURIComponent url) router_ of
+                  case idTree <$> matchRouter (R.parse decodeURIComponent url) router_ of
                        Nothing -> failure $ "router did't found <" <> url <> ">"
                        Just tree ->
                          assert "trees do not match" $ eqCofree tree expected
@@ -198,9 +211,9 @@ testSuite =
                             ["page" :< []]]]]
 
                 test "mount various paths at the same time" $
-                  let router = Route "main" "/" routeClass :+
-                               [ Route "users" "users" routeClass :+ []
-                               , Route "books" "users" routeClass :+ []
+                  let router = Route "main" (unit <$ lit "") routeClass :+
+                               [ Route "users" (unit <$ lit "users") routeClass :+ []
+                               , Route "books" (unit <$ lit "users") routeClass :+ []
                                ]
                    in do
                     checkTree router "/users" do
@@ -215,9 +228,9 @@ testSuite =
                         ]
 
                 test "mount various paths with indexes" $
-                  let router = Route "main" "/" routeClass :+
-                               [ Tuple (Route "users" "users" routeClass) (Just $ IndexRoute "users-index" indexRouteClass) :< []
-                               , Tuple (Route "books" "users" routeClass) (Just $ IndexRoute "books-index" indexRouteClass) :< []
+                  let router = Route "main" (unit <$ lit "") routeClass :+
+                               [ Tuple (Route "users" (unit <$ lit "users") routeClass) (Just $ IndexRoute "users-index" indexRouteClass) :< []
+                               , Tuple (Route "books" (unit <$ lit "users") routeClass) (Just $ IndexRoute "books-index" indexRouteClass) :< []
                                ]
                    in do
                       checkTree router "/users" $
@@ -234,21 +247,21 @@ testSuite =
                           ]
 
 
-                test "404 pages" do
-                  -- not fully consumed path
-                  case runRouter "/user/2/404-page" router of
-                       Nothing -> success
-                       Just el -> failure $ "router found \"/user/2/404-page\": " <> show (getIds el)
+                suite "404 pages" do
+                  test "not fully consumed path" do
+                    case runRouter "/user/2/404-page" router of
+                        Nothing -> success
+                        Just el -> failure $ "router found \"/user/2/404-page\": " <> show (getIds el)
 
-                  -- not fully consumed path
-                  case runRouter "/user/2/books/10/404-page" router of
-                       Nothing -> success
-                       Just el -> failure $ "router found \"/user/2/bookes/10/404-page\": " <> show (getIds el)
+                  test "not fully consumed path 2" do
+                    case runRouter "/user/2/books/10/404-page" router of
+                        Nothing -> success
+                        Just el -> failure $ "router found \"/user/2/books/10/404-page\": " <> show (getIds el)
 
-                  -- root path not matching
-                  case runRouter "/404-page/main" router of
-                       Nothing  -> success
-                       Just el -> failure $ "router found \"/404-page/main\": " <> show (getIds el)
+                  test "root path not matching" do
+                    case runRouter "/404-page/main" router of
+                        Nothing  -> success
+                        Just el -> failure $ "router found \"/404-page/main\": " <> show (getIds el)
 
                 test "should find a route if a less speicalized one hides it" do
                   checkElementTree router "/user/2/settings" $
