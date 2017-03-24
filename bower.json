@@ -11,9 +11,16 @@
     "**/.*",
     "node_modules",
     "bower_components",
+    "example",
+    "dist",
+    "utils",
     "test",
     "tests"
   ],
+  "repository": {                                                          
+    "type": "git",                                                         
+    "url": "git://github.com/purescript/purescript-prelude.git"            
+  }, 
   "dependencies": {
     "purescript-free": "^3.4.0",
     "purescript-prelude": "^2.5.0",
