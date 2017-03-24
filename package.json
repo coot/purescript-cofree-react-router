@@ -20,6 +20,7 @@
     "rimraf": "^2.6.1"
   },
   "scripts": {
+    "postinstall": "bower install",
     "clean": "rimraf output && rimraf .pulp-cache",
     "pretest": "pulp browserify --main 'Test.Main' -I test --to karma/index.js",
     "test": "pulp -w test",
