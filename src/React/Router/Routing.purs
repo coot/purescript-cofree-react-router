@@ -18,16 +18,17 @@ import Optic.Getter (view)
 import Optic.Setter (set)
 import React (ReactElement, createElement)
 import React.Router.Match (runMatch)
-import React.Router.Types (IndexRoute(..), Route(..), RouteProps_(..), RouteProps, Router, URL, idLens, urlLens)
+import React.Router.Types (IndexRoute(..), Route(..), RouteProps_(..), RouteProps, Router, idLens, urlLens)
 import Routing.Match.Class (lit)
 import Routing.Parser (parse) as R
+import Routing.Types (Route) as R
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
 shake
   :: forall a args
-   . Cofree Array (Maybe {url :: URL, props :: (RouteProps_ args) | a})
-  -> Maybe (Cofree Array {url :: URL, props :: (RouteProps_ args) | a})
+   . Cofree Array (Maybe {url :: R.Route, props :: (RouteProps_ args) | a})
+  -> Maybe (Cofree Array {url :: R.Route, props :: (RouteProps_ args) | a})
 shake cof = case head cof of
     Nothing -> Nothing
     Just r ->
@@ -36,15 +37,15 @@ shake cof = case head cof of
            then Just (r :< tail_)
            else Nothing
   where
-    matchEnd :: URL -> Boolean
+    matchEnd :: R.Route -> Boolean
     matchEnd url
       = L.length url == 0
         || L.length url == 1
         && (either (const false) (const true) $ runMatch (unit <$ lit "") url)
 
     go
-      :: Array (Cofree Array (Maybe {url :: URL, props :: (RouteProps_ args) | a }))
-      -> Array (Cofree Array {url :: URL, props :: (RouteProps_ args) | a})
+      :: Array (Cofree Array (Maybe {url :: R.Route, props :: (RouteProps_ args) | a }))
+      -> Array (Cofree Array {url :: R.Route, props :: (RouteProps_ args) | a})
     go cofs = foldl f [] cofs
       where 
         f cofs cof = case head cof of
@@ -57,18 +58,18 @@ shake cof = case head cof of
 
 matchRouter
   :: forall args
-   . URL
+   . R.Route
   -> Router args
-  -> Maybe (Cofree Array {url :: URL, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
+  -> Maybe (Cofree Array {url :: R.Route, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
 matchRouter url router = case shake $ go url router of
       Nothing -> Nothing
       Just cof -> Just cof
     where
 
-    -- check if `url :: URL` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
+    -- check if `url :: R.Route` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
     check :: Route args
-          -> URL
-          -> Maybe {url :: URL, props :: (RouteProps_ args)}
+          -> R.Route
+          -> Maybe {url :: R.Route, props :: (RouteProps_ args)}
     check route@(Route idRoute _ _) url =
       case runMatch (view urlLens route) url of
            Left _ -> Nothing
@@ -76,9 +77,9 @@ matchRouter url router = case shake $ go url router of
 
     -- traverse Cofree and match routes
     go
-      :: URL
+      :: R.Route
       -> Router args
-      -> Cofree Array (Maybe {url :: URL, props :: (RouteProps_ args), route :: Route args, indexRoute :: Maybe (IndexRoute args)})
+      -> Cofree Array (Maybe {url :: R.Route, props :: (RouteProps_ args), route :: Route args, indexRoute :: Maybe (IndexRoute args)})
     go url r = case check route url of
                     Just {url, props} ->
                       Just {url, props, route, indexRoute} :< map (go url) (tail r)
@@ -106,14 +107,14 @@ runRouter urlStr router = createRouteElement [] <$> matchRouter (R.parse decodeU
     -- traverse Cofree and produce ReactElement
     createRouteElement
       :: Array args
-      -> Cofree Array {url :: URL, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+      -> Cofree Array {url :: R.Route, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
       -> ReactElement
     createRouteElement args cof = asElement args (head cof) (tail cof)
       where
         asElement
           :: Array args
-          -> {url :: URL, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
-          -> Array (Cofree Array {url :: URL, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
+          -> {url :: R.Route, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+          -> Array (Cofree Array {url :: R.Route, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)})
           -> ReactElement
         asElement argsArr {url, props: props@(RouteProps propsRec), route, indexRoute} [] =
           case route of (Route _ _ cls) -> createElement cls newProps (addIndex [])

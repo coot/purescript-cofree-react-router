@@ -6,7 +6,6 @@ module React.Router.Types
   , RouteProps_(..)
   , RouteProps
   , Router
-  , URL
   , withoutIndex
   -- lenses
   , urlLens
@@ -25,9 +24,6 @@ import Optic.Types (Lens, Lens')
 import React (ReactClass)
 import Routing.Match (Match) as R
 import Routing.Types (Route) as R
-
--- | Parsed pathname and query string, type alias to `Routing.Types.Route`.
-type URL = R.Route
 
 -- | `RouteProps_` type, one should not need it, it is used internally.
 newtype RouteProps_ args = RouteProps { id :: String, args :: args }
