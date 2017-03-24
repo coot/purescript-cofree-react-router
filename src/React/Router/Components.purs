@@ -25,12 +25,14 @@ import React.DOM.Props (Props, href, onClick)
 import React.Router.Routing (runRouter)
 import React.Router.Types (Router)
 
+-- | RouterState type
 type RouterState = 
   { hash :: String
   , pathname :: String
   , search :: String
   }
 
+-- | RouterProps type
 type RouterProps locations notFoundProps =
   { router :: Router locations
   , notFound :: Maybe
@@ -49,6 +51,9 @@ getLocation = do
   s <- search l
   pure { hash: h, pathname: p, search: s }
   
+
+-- | `ReactSpec` for the `browserRouterClass` - the main entry point react
+-- class for the router.
 browserRouter :: forall locations notfound. ReactSpec (RouterProps locations notfound) RouterState (history :: HISTORY, dom :: DOM)
 browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
@@ -80,11 +85,23 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
       loc <- getLocation
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
 
+-- | React class for the `browerRouter` element.  Use it to init your application.
+-- | ```purescript
+-- |  router = ... :: Router _
+-- |  main = void $ elm >>= render (createElement browserRouterClass {router, notFound: Nothing} [])
+-- |    where
+-- |      elm = do
+-- |        elm_ <- window >>= document >>= getElementById (ElementId "app") <<< documentToNonElementParentNode <<< htmlDocumentToDocument
+-- |        pure $ unsafePartial fromJust (toMaybe elm_) 
+-- |  ```
 browserRouterClass :: forall locations notfound. ReactClass (RouterProps locations notfound)
 browserRouterClass = createClass browserRouter
 
 type LinkProps = {to :: String, props :: Array Props}
 
+-- | `ReactSpec` for the `link` element; it takes a record of type `LinkProps`
+-- | as properties.  The `props` record property is directly passed to underlying
+-- | `a` element, e.g. this can be used to add css classes.
 linkSpec :: ReactSpec LinkProps Unit ()
 linkSpec = (spec unit render) { displayName = "Link" }
   where
@@ -103,11 +120,14 @@ linkSpec = (spec unit render) { displayName = "Link" }
       dispatchEvent (createPopStateEvent p.to) (windowToEventTarget w)
       pure unit
 
+-- | React class for the `link` element.
 linkClass :: ReactClass LinkProps
 linkClass = createClass linkSpec
 
+-- | `link` element; use it instead of `a` to route the user through application.
 link :: LinkProps -> Array ReactElement -> ReactElement
 link = createElement linkClass
 
+-- | as `link`, but with empty properties passed to the underlying `a` element.
 link' :: String -> Array ReactElement -> ReactElement
 link' to = link {to, props: []}

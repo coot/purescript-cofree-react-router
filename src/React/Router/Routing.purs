@@ -21,16 +21,9 @@ import React.Router.Match (runMatch)
 import React.Router.Types (IndexRoute(..), Route(..), RouteProps_(..), RouteProps, Router, URL, idLens, urlLens)
 import Routing.Match.Class (lit)
 import Routing.Parser (parse) as R
-import Routing.Types (RoutePart(..))
 
-routeToString :: L.List RoutePart -> String
-routeToString url = L.intercalate "/" $ unwrap <$> url
-  where
-    unwrap (Path p) = p
-    unwrap (Query q) = "?" <> (show q)
-
--- | remove all branches that are annotated with `Nothing`
--- | it should also elminate not fully consumed URLs
+-- | Remove all branches that are annotated with `Nothing`
+-- | it also elminates not fully consumed URLs
 shake
   :: forall a args
    . Cofree Array (Maybe {url :: URL, props :: (RouteProps_ args) | a})
@@ -48,6 +41,7 @@ shake cof = case head cof of
       = L.length url == 0
         || L.length url == 1
         && (either (const false) (const true) $ runMatch (unit <$ lit "") url)
+
     go
       :: Array (Cofree Array (Maybe {url :: URL, props :: (RouteProps_ args) | a }))
       -> Array (Cofree Array {url :: URL, props :: (RouteProps_ args) | a})
@@ -99,6 +93,8 @@ matchRouter url router = case shake $ go url router of
         indexRoute :: Maybe (IndexRoute args)
         indexRoute = snd head_
 
+-- | Main entry point for running `Router`, it returns `ReactElement` that can
+-- | be injected into React vDOM.
 runRouter
   :: forall args
    . String

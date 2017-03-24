@@ -1,9 +1,6 @@
 module React.Router.Types 
   ( (:+)
-  , Hash(Hash)
   , IndexRoute(IndexRoute)
-  , PathPart(PathPart)
-  , Query
   , Route(Route)
   , RouteClass
   , RouteProps_(..)
@@ -22,7 +19,6 @@ import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.NonEmpty (NonEmpty)
-import Data.StrMap (StrMap)
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
 import Optic.Types (Lens, Lens')
@@ -30,36 +26,32 @@ import React (ReactClass)
 import Routing.Match (Match) as R
 import Routing.Types (Route) as R
 
-newtype PathPart = PathPart String
-
-derive instance newTypePathPart :: Newtype PathPart _
-
-instance showPathPart :: Show PathPart where
-  show (PathPart s) = "(PathPart \"" <> s <> "\")"
-
-derive instance eqPathPart :: Eq PathPart
-
-type Query = StrMap String
-
-newtype Hash = Hash String
-
-derive instance newHash :: Newtype Hash _
-
-instance showHash :: Show Hash where
-  show (Hash s) = "Hash " <> s
-
-derive instance eqHash :: Eq Hash
-
--- parsed pathname and query string
+-- | Parsed pathname and query string, type alias to `Routing.Types.Route`.
 type URL = R.Route
 
+-- | `RouteProps_` type, one should not need it, it is used internally.
 newtype RouteProps_ args = RouteProps { id :: String, args :: args }
 
+-- | RouteProps type (alias) for properties of `ReactClass`-es used by `Router`.
 type RouteProps args = RouteProps_ (NonEmpty Array args)
 
+-- | lens to get the id of route properties
+-- | ```purescript
+-- |    do
+-- |      props <- getProps this
+-- |      let id = view idLens props
+-- | ```
 idLens :: forall args. Lens' (RouteProps_ args) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
+-- | lens to get the arguments of route properties
+-- | ```purescript
+-- |    do
+-- |      props <- getProps this
+-- |      let arg = last (view argsLens props)
+-- | ```
+-- | where `last` is `React.Router.Utils.last`
+-- | note that `view argsLens props` returns an object of type `NonEmpty Array _`.
 argsLens :: forall args args'. Lens (RouteProps_ args) (RouteProps_ args') args args'
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
@@ -70,11 +62,11 @@ derive instance newtypeRouteProps :: Newtype (RouteProps_ args) _
 type RouteClass args = ReactClass (RouteProps_ (NonEmpty Array args))
 
 -- | Route type
--- | The first parameter is the id property
+-- | The first parameter is an identifier.
 data Route args = Route String (R.Match args) (RouteClass args)
 
 -- | IndexRoute type
--- | The first parameter is the id property
+-- | The first parameter is the id property.
 data IndexRoute args = IndexRoute String (RouteClass args)
 
 instance showRoute :: Show (Route args) where
@@ -105,4 +97,5 @@ withoutIndex
   -> Router args
 withoutIndex r rs = Tuple r Nothing :< rs
 
+-- | `:+` lets define routes without index route
 infixr 6 withoutIndex as :+
