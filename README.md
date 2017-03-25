@@ -9,7 +9,7 @@ type Router args = Cofree Array (Tuple (Route args) (Maybe (IndexRoute args)))
 thus it is a cofree comonad for the `Array` functor.
 
 You can define router using `:+` (adds routes without index) and `:<` (the
-standard combinator for folding a cofree comonad) combinators:
+standard combinator for unfolding a cofree comonad) combinators:
 ```purescript
 router =
     Route "home" "/" Home :+
