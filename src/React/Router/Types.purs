@@ -3,8 +3,7 @@ module React.Router.Types
   , IndexRoute(IndexRoute)
   , Route(Route)
   , RouteClass
-  , RouteProps_(..)
-  , RouteProps
+  , RouteProps(..)
   , Router
   , withoutIndex
   -- lenses
@@ -25,11 +24,8 @@ import React (ReactClass)
 import Routing.Match (Match) as R
 import Routing.Types (Route) as R
 
--- | `RouteProps_` type, one should not need it, it is used internally.
-newtype RouteProps_ args = RouteProps { id :: String, args :: args }
-
--- | RouteProps type (alias) for properties of `ReactClass`-es used by `Router`.
-type RouteProps args = RouteProps_ (NonEmpty Array args)
+-- | `RouteProps` type, one should not need it, it is used internally.
+newtype RouteProps args = RouteProps { id :: String, args :: NonEmpty Array args }
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -37,7 +33,7 @@ type RouteProps args = RouteProps_ (NonEmpty Array args)
 -- |      props <- getProps this
 -- |      let id = view idLens props
 -- | ```
-idLens :: forall args. Lens' (RouteProps_ args) String
+idLens :: forall args. Lens' (RouteProps args) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
 -- | lens to get the arguments of route properties
@@ -48,14 +44,14 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp
 -- | ```
 -- | where `last` is `React.Router.Utils.last`
 -- | note that `view argsLens props` returns an object of type `NonEmpty Array _`.
-argsLens :: forall args args'. Lens (RouteProps_ args) (RouteProps_ args') args args'
+argsLens :: forall args args'. Lens (RouteProps args) (RouteProps args') (NonEmpty Array args) (NonEmpty Array args')
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
-derive instance newtypeRouteProps :: Newtype (RouteProps_ args) _
+derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass args = ReactClass (RouteProps_ (NonEmpty Array args))
+type RouteClass args = ReactClass (RouteProps args)
 
 -- | Route type
 -- | The first parameter is an identifier.

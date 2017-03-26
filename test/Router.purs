@@ -19,7 +19,7 @@ import React (ReactElement, ReactThis, createClass, createClassStateless, create
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
 import React.Router (matchRouter, runRouter)
-import React.Router.Types (IndexRoute(..), Route(..), RouteClass, RouteProps_, RouteProps, Router, idLens, (:+))
+import React.Router.Types (IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
 import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
@@ -49,7 +49,7 @@ indexRouteClass =
 
 idTree
   :: forall args
-   . Cofree Array {url :: R.Route, props :: RouteProps_ args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+   . Cofree Array {url :: R.Route, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
   -> Cofree Array {id :: String, indexId :: Maybe String}
 idTree = map (\{url, props, route, indexRoute} -> {id: (view idLens props), indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 

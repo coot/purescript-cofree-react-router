@@ -21,12 +21,10 @@ last (a :| as) =
     Nothing -> a
     Just l -> l
 
--- | Create a `NonEmpty Array` by appending an element.
-snoc :: forall a. Array a -> a -> NonEmpty Array a
-snoc as a =
-  case A.uncons as of
-    Nothing -> a :| as
-    Just {head, tail} -> head :| A.snoc tail a
+append :: forall a. Array a -> NonEmpty Array a -> NonEmpty Array a
+append as (b :| bs) = case A.uncons as of
+                        Nothing -> b :| bs
+                        Just {head, tail} -> head :| (A.snoc tail b <> bs)
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
 routeToString :: R.Route -> String
