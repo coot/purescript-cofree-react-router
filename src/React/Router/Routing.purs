@@ -65,26 +65,17 @@ matchRouter url router = case shake $ go url router of
       Nothing -> Nothing
       Just cof -> Just cof
     where
-
-    -- check if `url :: R.Route` matches `route :: Route`, if so return a Tuple of RouteClass and RouteProps.
-    check :: Route args
-          -> R.Route
-          -> Maybe {url :: R.Route, props :: (RouteProps_ args)}
-    check route@(Route idRoute _ _) url =
-      case runMatch (view urlLens route) url of
-           Left _ -> Nothing
-           Right (Tuple urlRest args) -> Just { url: urlRest , props: wrap { id: idRoute, args } }
-
     -- traverse Cofree and match routes
     go
       :: R.Route
       -> Router args
       -> Cofree Array (Maybe {url :: R.Route, props :: (RouteProps_ args), route :: Route args, indexRoute :: Maybe (IndexRoute args)})
-    go url r = case check route url of
-                    Just {url, props} ->
-                      Just {url, props, route, indexRoute} :< map (go url) (tail r)
-                    Nothing ->
-                      Nothing :< []
+    go url r = case runMatch (view urlLens route) url of
+                    Right (Tuple url args) ->
+                      let props = case route of
+                                    Route idRoute _ _ -> wrap { id: idRoute, args }
+                      in Just {url, props, route, indexRoute} :< map (go url) (tail r)
+                    Left _ -> Nothing :< []
       where
         head_ = head r
 
