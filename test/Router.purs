@@ -28,17 +28,17 @@ import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
 import Prelude hiding (div)
 
-routeClass :: forall args. RouteClass args
+routeClass :: forall args. RouteClass RouteProps args
 routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
 
-routeClass2 :: forall args. RouteClass args
+routeClass2 :: forall args. RouteClass RouteProps args
 routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
                     pure $ div [_id (view idLens props)] children)
 
-indexRouteClass :: forall args. RouteClass args
+indexRouteClass :: forall args. RouteClass RouteProps args
 indexRouteClass = 
     let clsSpec = (spec 0) $
         (\this -> do
@@ -49,7 +49,7 @@ indexRouteClass =
 
 idTree
   :: forall args
-   . Cofree Array {url :: R.Route, props :: RouteProps args, route :: Route args, indexRoute :: Maybe (IndexRoute args)}
+   . Cofree Array {url :: R.Route, props :: RouteProps args, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args)}
   -> Cofree Array {id :: String, indexId :: Maybe String}
 idTree = map (\{url, props, route, indexRoute} -> {id: (view idLens props), indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
@@ -117,7 +117,7 @@ testSuite =
     suite "Router" do
         suite "runRouter"
             let
-                router :: Router Unit
+                router :: Router RouteProps Unit
                 router = Route "main" (unit <$ lit "") routeClass :+
                           [ Route "home" (unit <$ lit "home") routeClass :+ []
                           , Tuple (Route "user" (unit <$ (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
@@ -129,7 +129,7 @@ testSuite =
                             , Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) routeClass :+ []
                           ]
 
-                router2 :: Router Unit
+                router2 :: Router RouteProps Unit
                 router2 = Route "main" (unit <$ lit "") routeClass2 :+
                             [ Route "home" (unit <$ lit "home") routeClass2 :+ 
                               [ Route "user" (unit <$ lit "user") routeClass2 :+ []
@@ -137,7 +137,7 @@ testSuite =
                               , Route "user-settings" (unit <$ (lit "home" *> lit "user" *> lit "settings")) routeClass :+ []
                             ]
 
-                router3 :: Router Unit
+                router3 :: Router RouteProps Unit
                 router3 = Route "main" (unit <$ lit "") routeClass2 :+
                           [ Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
                             [ Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
@@ -155,7 +155,7 @@ testSuite =
                             eqCofreeS chTree expected
 
                 checkTree
-                  :: Router Unit
+                  :: Router RouteProps Unit
                   -> String
                   -> Cofree Array { id :: String, indexId :: Maybe String }
                   -> Aff _ Unit

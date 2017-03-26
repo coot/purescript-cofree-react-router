@@ -113,7 +113,7 @@ book = createClass $ (spec unit render) { displayName = "Book" }
         ]
 
       
-router :: Router Locations
+router :: Router RouteProps Locations
 router =
   (Tuple (Route "home" (Home <$ (lit "")) home) (Just $ IndexRoute "user-index" usersIndex))  :<
     [ Route "user" (User <$> int) user :+ []

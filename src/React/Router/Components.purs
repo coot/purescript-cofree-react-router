@@ -7,6 +7,7 @@ module React.Router.Components
   ) where
 
 import Control.Monad.Eff (Eff)
+import Control.Comonad.Cofree (Cofree)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
 import DOM.Event.Types (Event)
@@ -17,13 +18,15 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
+import Data.Tuple (Tuple)
 import Data.Maybe (Maybe, maybe')
 import Prelude (Unit, bind, id, pure, unit, ($), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
+import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
-import React.Router.Types (Router)
+import React.Router.Types (IndexRoute, Router, Route)
 
 -- | RouterState type
 type RouterState = 
@@ -33,8 +36,8 @@ type RouterState =
   }
 
 -- | RouterProps type
-type RouterProps locations notFoundProps =
-  { router :: Router locations
+type RouterProps props args notFoundProps =
+  { router :: Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
   , notFound :: Maybe
     { cls :: ReactClass notFoundProps
     , props :: notFoundProps
@@ -53,8 +56,11 @@ getLocation = do
   
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
--- class for the router.
-browserRouter :: forall locations notfound. ReactSpec (RouterProps locations notfound) RouterState (history :: HISTORY, dom :: DOM)
+-- | class for the router.
+browserRouter
+  :: forall props args notfound
+   . (RoutePropsClass props)
+  => ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM)
 browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = getLocation
@@ -94,7 +100,10 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
 -- |        elm_ <- window >>= document >>= getElementById (ElementId "app") <<< documentToNonElementParentNode <<< htmlDocumentToDocument
 -- |        pure $ unsafePartial fromJust (toMaybe elm_) 
 -- |  ```
-browserRouterClass :: forall locations notfound. ReactClass (RouterProps locations notfound)
+browserRouterClass
+  :: forall props args notfound
+   . (RoutePropsClass props)
+  => ReactClass (RouterProps props args notfound)
 browserRouterClass = createClass browserRouter
 
 type LinkProps = {to :: String, props :: Array Props}

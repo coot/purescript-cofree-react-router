@@ -26,6 +26,9 @@ append as (b :| bs) = case A.uncons as of
                         Nothing -> b :| bs
                         Just {head, tail} -> head :| (A.snoc tail b <> bs)
 
+append' :: forall a. NonEmpty Array a -> NonEmpty Array a -> NonEmpty Array a
+append' (a :| as) (b :| bs) = a :| (as <> A.cons b bs)
+
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
 routeToString :: R.Route -> String
 routeToString url = L.intercalate "/" $ unwrap <$> url

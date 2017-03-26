@@ -21,6 +21,7 @@ import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
 import Optic.Types (Lens, Lens')
 import React (ReactClass)
+import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
 import Routing.Types (Route) as R
 
@@ -47,24 +48,32 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp
 argsLens :: forall args args'. Lens (RouteProps args) (RouteProps args') (NonEmpty Array args) (NonEmpty Array args')
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
+instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
+  argsLens = argsLens
+  idLens = idLens
+  mkProps name args = RouteProps { id: name, args }
+
 derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass args = ReactClass (RouteProps args)
+type RouteClass props args = (RoutePropsClass props) => ReactClass (props args)
 
 -- | Route type
 -- | The first parameter is an identifier.
-data Route args = Route String (R.Match args) (RouteClass args)
+data Route props args = Route String (R.Match args) (RouteClass props args)
 
 -- | IndexRoute type
 -- | The first parameter is the id property.
-data IndexRoute args = IndexRoute String (RouteClass args)
+data IndexRoute props args = IndexRoute String (RouteClass props args)
 
-instance showRoute :: Show (Route args) where
+instance showRoute :: Show (Route props args) where
   show (Route id_ _ _) = "<Route \"" <> id_ <> "\">"
 
-urlLens :: forall args. Lens' (Route args) (R.Match args)
+urlLens
+  :: forall props args
+   . (RoutePropsClass props)
+  => Lens' (Route props args) (R.Match args)
 urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
 -- | Router
@@ -81,12 +90,14 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |             ]
 -- |         ]
 -- | ```
-type Router args = Cofree Array (Tuple (Route args) (Maybe (IndexRoute args)))
+type Router props args = (RoutePropsClass props) => Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
 
 withoutIndex
-  :: forall args. Route args
-  -> Array (Router args)
-  -> Router args
+  :: forall props args
+   . (RoutePropsClass props)
+  => Route props args
+  -> Array (Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args))))
+  -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
 withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route
