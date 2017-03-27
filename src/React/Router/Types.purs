@@ -8,8 +8,6 @@ module React.Router.Types
   , withoutIndex
   -- lenses
   , urlLens
-  , idLens
-  , argsLens
   ) where
 
 import Prelude
@@ -51,7 +49,7 @@ argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RoutePro
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
   argsLens = argsLens
   idLens = idLens
-  mkProps name args = RouteProps { id: name, args: args :| [] }
+  mkProps name args = RouteProps { id: name, args: args }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 

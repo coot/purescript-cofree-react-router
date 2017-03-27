@@ -21,13 +21,10 @@ last (a :| as) =
     Nothing -> a
     Just l -> l
 
-append :: forall a. Array a -> NonEmpty Array a -> NonEmpty Array a
-append as (b :| bs) = case A.uncons as of
-                        Nothing -> b :| bs
-                        Just {head, tail} -> head :| (A.snoc tail b <> bs)
-
-append' :: forall a. NonEmpty Array a -> NonEmpty Array a -> NonEmpty Array a
-append' (a :| as) (b :| bs) = a :| (as <> A.cons b bs)
+snoc :: forall a. Array a -> a -> NonEmpty Array a
+snoc as a = case A.uncons as of
+              Nothing -> a :| []
+              Just {head, tail} -> head :| (A.snoc tail a)
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
 routeToString :: R.Route -> String

@@ -18,8 +18,7 @@ import Prelude (unit)
 import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
-import React.Router (matchRouter, runRouter)
-import React.Router.Types (IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
+import React.Router (matchRouter, runRouter, IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
 import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
