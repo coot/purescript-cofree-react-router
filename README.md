@@ -4,7 +4,7 @@ Routing library for `React` in the spirit of
 [react-router](https://github.com/ReactTraining/react-router) v3.
 The router has type
 ```purescript
-type Router args = Cofree Array (Tuple (Route args) (Maybe (IndexRoute args)))
+type Router props args = (RoutePropsClass props) => Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
 ```
 thus it is a cofree comonad for the `Array` functor.
 
