@@ -1,7 +1,7 @@
 module React.Router.Class where
 
 import Data.NonEmpty (NonEmpty)
-import Optic.Types (Lens, Lens')
+import Optic.Types (Lens')
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
 -- | each `RouteClass` react class component.  There is one instance
@@ -12,5 +12,5 @@ import Optic.Types (Lens, Lens')
 -- | corrsponding url part.
 class RoutePropsClass props where
   idLens :: forall args. Lens' (props args) String
-  argsLens :: forall args args'. Lens (props args) (props args') (NonEmpty Array args) (NonEmpty Array args')
+  argsLens :: forall args. Lens' (props args) (NonEmpty Array args)
   mkProps :: forall args. String -> NonEmpty Array args -> props args

@@ -17,7 +17,7 @@ import Data.Newtype (class Newtype)
 import Data.NonEmpty (NonEmpty, (:|))
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
-import Optic.Types (Lens, Lens')
+import Optic.Types (Lens')
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
@@ -43,7 +43,7 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp
 -- | ```
 -- | where `last` is `React.Router.Utils.last`
 -- | note that `view argsLens props` returns an object of type `NonEmpty Array _`.
-argsLens :: forall args args'. Lens (RouteProps args) (RouteProps args') (NonEmpty Array args) (NonEmpty Array args')
+argsLens :: forall args. Lens' (RouteProps args) (NonEmpty Array args)
 argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
