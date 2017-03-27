@@ -16,7 +16,7 @@ import Prelude
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.NonEmpty (NonEmpty)
+import Data.NonEmpty (NonEmpty, (:|))
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
 import Optic.Types (Lens, Lens')
@@ -51,7 +51,7 @@ argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RoutePro
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
   argsLens = argsLens
   idLens = idLens
-  mkProps name args = RouteProps { id: name, args }
+  mkProps name args = RouteProps { id: name, args: args :| [] }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps args) _
 

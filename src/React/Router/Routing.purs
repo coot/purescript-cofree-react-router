@@ -77,7 +77,7 @@ matchRouter url router = case shake $ go url router of
     go url r = case runMatch (view urlLens route) url of
                     Right (Tuple url args) ->
                       let props = case route of
-                                    Route idRoute _ _ -> mkProps idRoute (args :| [])
+                                    Route idRoute _ _ -> mkProps idRoute args
                       in Just {url, props, route, indexRoute} :< map (go url) (tail r)
                     Left _ -> Nothing :< []
       where
