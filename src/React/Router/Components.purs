@@ -26,7 +26,7 @@ import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
-import React.Router.Types (IndexRoute, Router, Route)
+import React.Router.Types (IndexRoute, Route)
 
 -- | RouterState type
 type RouterState = 

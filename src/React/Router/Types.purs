@@ -14,14 +14,13 @@ import Prelude
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.NonEmpty (NonEmpty, (:|))
+import Data.NonEmpty (NonEmpty)
 import Data.Tuple (Tuple(..))
 import Optic.Lens (lens)
 import Optic.Types (Lens')
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
-import Routing.Types (Route) as R
 
 -- | `RouteProps` type, one should not need it, it is used internally.
 newtype RouteProps args = RouteProps { id :: String, args :: NonEmpty Array args }
