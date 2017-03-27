@@ -75,20 +75,15 @@ matchRouter url router = case shake $ go [] url router of
       -> R.Route
       -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
       -> Cofree Array (Maybe {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
-    go argsArr url r = case runMatch (view urlLens route) url of
-                    Right (Tuple url args) ->
-                      let props = case route of
-                                    Route idRoute _ _ -> mkProps idRoute (U.snoc argsArr args)
-                      in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr args) url) (tail r)
-                    Left _ -> Nothing :< []
-      where
-        head_ = head r
-
-        route :: Route props args
-        route = fst head_
-
-        indexRoute :: Maybe (IndexRoute props args)
-        indexRoute = snd head_
+    go argsArr url r =
+      case head r of
+        Tuple route indexRoute ->
+          case runMatch (view urlLens route) url of
+            Right (Tuple url args) ->
+              let props = case route of
+                            Route idRoute _ _ -> mkProps idRoute (U.snoc argsArr args)
+              in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr args) url) (tail r)
+            Left _ -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.
@@ -106,18 +101,18 @@ runRouter urlStr router = createRouteElement <$> matchRouter (R.parse decodeURIC
       :: Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)}
       -> ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
-      where
-        asElement
-          :: {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)}
-          -> Array (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
-          -> ReactElement
-        asElement {url, props, route: route@(Route _ _ cls), indexRoute} [] =
-          createElement cls props (addIndex [])
-          where
-            -- add index if indexRoute is present
-            addIndex :: Array ReactElement -> Array ReactElement
-            addIndex children = maybe children (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) children) indexRoute
 
-        asElement {url, props, route, indexRoute} cofs =
-          case route of (Route _ _ cls) ->
-            createElement cls props (createRouteElement <$> cofs)
+    asElement
+      :: {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)}
+      -> Array (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
+      -> ReactElement
+    asElement {url, props, route: route@(Route _ _ cls), indexRoute} [] =
+      createElement cls props (addIndex [])
+      where
+        -- add index
+        addIndex :: Array ReactElement -> Array ReactElement
+        addIndex children = maybe children (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) children) indexRoute
+
+    asElement {url, props, route, indexRoute} cofs =
+      case route of (Route _ _ cls) ->
+        createElement cls props (createRouteElement <$> cofs)
