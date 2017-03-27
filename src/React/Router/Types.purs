@@ -34,19 +34,7 @@ newtype RouteProps args = RouteProps { id :: String, args :: NonEmpty Array args
 idLens :: forall args. Lens' (RouteProps args) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
 
--- | lens to get the arguments of route properties
--- | ```purescript
--- |    do
--- |      props <- getProps this
--- |      let arg = last (view argsLens props)
--- | ```
--- | where `last` is `React.Router.Utils.last`
--- | note that `view argsLens props` returns an object of type `NonEmpty Array _`.
-argsLens :: forall args. Lens' (RouteProps args) (NonEmpty Array args)
-argsLens = lens (\(RouteProps rp) -> rp.args) (\(RouteProps rp) args -> RouteProps (rp { args=args }))
-
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
-  argsLens = argsLens
   idLens = idLens
   mkProps name args = RouteProps { id: name, args: args }
 
