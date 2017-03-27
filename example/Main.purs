@@ -19,7 +19,7 @@ import Optic.Getter (view)
 import Partial.Unsafe (unsafePartial)
 import React (ReactClass, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
-import React.Router (IndexRoute(..), Route(..), RouteProps, Router, browserRouterClass, link', argsLens, (:+))
+import React.Router (IndexRoute(..), Route(..), RouteProps, Router, browserRouterClass, link', (:+))
 import React.Router.Utils (last) as R
 import ReactDOM (render)
 import Routing.Match.Class (int, lit, str)
@@ -100,7 +100,7 @@ book = createClass $ (spec unit render) { displayName = "Book" }
   where
     render this = do
       props <- getProps this
-      let book = R.last (view argsLens props) 
+      let book = R.last (unwrap props).args
           bookTitle = case book of
             Book "fp-programming" -> "Functional Programing"
             Book "grothendieck-galois-theory" -> "Grothendick Galois Theory"
