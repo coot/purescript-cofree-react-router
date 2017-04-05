@@ -1,7 +1,7 @@
 module React.Router.Class where
 
 import Data.NonEmpty (NonEmpty)
-import Optic.Types (Lens')
+import Data.Lens (Lens')
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
 -- | each `RouteClass` react class component.  There is one instance

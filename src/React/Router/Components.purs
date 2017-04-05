@@ -7,6 +7,7 @@ module React.Router.Components
   ) where
 
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Comonad.Cofree (Cofree)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
@@ -20,8 +21,8 @@ import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
 import Data.Tuple (Tuple)
 import Data.Maybe (Maybe, maybe')
-import Prelude (Unit, bind, id, pure, unit, ($), (/=), (<<<), (<>), (>>=))
-import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
+import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (/=), (<<<), (<>), (>>=))
+import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState, ReactThis, ComponentWillMount)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
@@ -58,10 +59,10 @@ getLocation = do
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
 -- | class for the router.
 browserRouter
-  :: forall props args notfound
+  :: forall eff props args notfound
    . (RoutePropsClass props)
-  => ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM)
-browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
+  => ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM | eff)
+browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
   where
     initialState this = getLocation
 
@@ -90,6 +91,9 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
     handler this ev = do
       loc <- getLocation
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
+
+    coerceEff :: forall a eff. Eff (dom :: DOM | eff) a -> Eff eff a
+    coerceEff = unsafeCoerceEff
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
@@ -122,12 +126,11 @@ linkSpec = (spec unit render) { displayName = "Link" }
         chrn
 
     clickHandler this ev = do
-      preventDefault ev
+      _ <- preventDefault ev
       p <- getProps this
       w <- window
       history w >>= pushState (toForeign "") (DocumentTitle p.to) (URL p.to)
-      dispatchEvent (createPopStateEvent p.to) (windowToEventTarget w)
-      pure unit
+      void $ dispatchEvent (createPopStateEvent p.to) (windowToEventTarget w)
 
 -- | React class for the `link` element.
 linkClass :: ReactClass LinkProps

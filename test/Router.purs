@@ -13,7 +13,7 @@ import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
 import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
-import Optic.Getter (view)
+import Data.Lens (view)
 import Partial.Unsafe (unsafePartial)
 import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
@@ -87,7 +87,7 @@ unsafeGetChildren = unsafePerformEff <<< getChildren <<< unsafeCoerceToReactElem
 
 -- this works only for elements with id in props
 unsafeChildrenTree :: ReactElement -> Cofree Array String
-unsafeChildrenTree el = getId <$> unfoldCofree el id unsafeGetChildren
+unsafeChildrenTree el = getId <$> unfoldCofree id unsafeGetChildren el
   where
     getId :: ReactElement -> String
     getId el_ = _.id <<< unsafeCoerce <<< unsafePerformEff <<< getProps <<< unsafeCoerce $ el_
