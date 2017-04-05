@@ -2,6 +2,7 @@ module Test.Router (
   testSuite
   ) where
 
+import Prelude hiding (div)
 import Data.Array as A
 import Data.StrMap as SM
 import Control.Comonad.Cofree (Cofree, unfoldCofree, (:<))
@@ -14,7 +15,6 @@ import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
 import Optic.Getter (view)
 import Partial.Unsafe (unsafePartial)
-import Prelude (unit)
 import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
@@ -25,7 +25,6 @@ import Routing.Types (Route) as R
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
-import Prelude hiding (div)
 
 routeClass :: forall args. RouteClass RouteProps args
 routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
