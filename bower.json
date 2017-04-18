@@ -15,7 +15,8 @@
     "dist",
     "utils",
     "test",
-    "tests"
+    "tests",
+    "output"
   ],
   "repository": {                                                          
     "type": "git",                                                         
