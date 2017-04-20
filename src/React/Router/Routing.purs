@@ -48,13 +48,13 @@ shake cof = case head cof of
       -> Array (Cofree Array {url :: R.Route, props :: props args | a})
     go cofs = foldl f [] cofs
       where 
-        f cofs cof = case head cof of
-                       Nothing -> cofs
+        f cofs_ cof_ = case head cof_ of
+                       Nothing -> cofs_
                        Just cofHead ->
-                         let tail_ = go $ tail cof
+                         let tail_ = go $ tail cof_
                          in if A.length tail_ /= 0 || matchEnd cofHead.url
-                              then A.snoc cofs (cofHead :< go (tail cof))
-                              else cofs
+                              then A.snoc cofs_ (cofHead :< go (tail cof_))
+                              else cofs_
 
 matchRouter
   :: forall props args
@@ -62,7 +62,7 @@ matchRouter
   => R.Route
   -> Router props args
   -> Maybe (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
-matchRouter url router = case shake $ go [] url router of
+matchRouter url_ router = case shake $ go [] url_ router of
       Nothing -> Nothing
       Just cof -> Just cof
     where
@@ -72,10 +72,10 @@ matchRouter url router = case shake $ go [] url router of
       -> R.Route
       -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
       -> Cofree Array (Maybe {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
-    go argsArr url r =
+    go argsArr url' r =
       case head r of
         Tuple route indexRoute ->
-          case runMatch (view urlLens route) url of
+          case runMatch (view urlLens route) url' of
             Right (Tuple url args) ->
               let props = case route of
                             Route idRoute _ _ -> mkProps idRoute (U.snoc argsArr args)

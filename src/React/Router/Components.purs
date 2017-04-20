@@ -93,7 +93,7 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
       loc <- getLocation
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
 
-    coerceEff :: forall a eff. Eff (dom :: DOM | eff) a -> Eff eff a
+    coerceEff :: forall a e. Eff (dom :: DOM | e) a -> Eff e a
     coerceEff = unsafeCoerceEff
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
@@ -146,4 +146,4 @@ link = createElement linkClass
 
 -- | as `link`, but with empty properties passed to the underlying `a` element.
 link' :: String -> Array ReactElement -> ReactElement
-link' to = link {to, props: []}
+link'  = link <<< {to: _, props: []}

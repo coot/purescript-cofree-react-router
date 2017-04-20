@@ -1,11 +1,11 @@
 module React.Router
-  ( module React.Router.Components
-  , module React.Router.Routing
-  , module React.Router.Types
-  , module React.Router.Class
+  ( module Components
+  , module Routing
+  , module Types
+  , module Class
   ) where
 
-import React.Router.Components
-import React.Router.Routing
-import React.Router.Types
-import React.Router.Class
+import React.Router.Components as Components
+import React.Router.Routing as Routing
+import React.Router.Types as Types
+import React.Router.Class as Class
