@@ -4,6 +4,7 @@ module React.Router.Components
   , linkSpec
   , link
   , link'
+  , to
   ) where
 
 import Control.Monad.Eff (Eff)
@@ -111,6 +112,9 @@ browserRouterClass
 browserRouterClass = createClass browserRouter
 
 type LinkProps = {to :: String, props :: Array Props}
+
+to :: String -> LinkProps
+to = { to: _, props: [] }
 
 -- | `ReactSpec` for the `link` element; it takes a record of type `LinkProps`
 -- | as properties.  The `props` record property is directly passed to underlying
