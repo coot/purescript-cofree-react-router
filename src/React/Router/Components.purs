@@ -5,11 +5,13 @@ module React.Router.Components
   , link
   , link'
   , to
+  , goTo
   ) where
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Comonad.Cofree (Cofree)
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
 import DOM.Event.Types (Event)
@@ -20,9 +22,9 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
-import Data.Tuple (Tuple)
 import Data.Maybe (Maybe, maybe')
-import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (/=), (<<<), (<>), (>>=))
+import Data.Tuple (Tuple)
+import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (<$>), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -131,10 +133,8 @@ linkSpec = (spec unit render) { displayName = "Link" }
 
     clickHandler this ev = do
       _ <- preventDefault ev
-      p <- getProps this
-      w <- window
-      history w >>= pushState (toForeign "") (DocumentTitle p.to) (URL p.to)
-      void $ dispatchEvent (createPopStateEvent p.to) (windowToEventTarget w)
+      url <- _.to <$> getProps this
+      goTo url
 
 -- | React class for the `link` element.
 linkClass :: ReactClass LinkProps
@@ -147,3 +147,10 @@ link = createElement linkClass
 -- | as `link`, but with empty properties passed to the underlying `a` element.
 link' :: String -> Array ReactElement -> ReactElement
 link'  = link <<< {to: _, props: []}
+
+goTo :: forall eff. String -> Eff (dom :: DOM, err :: EXCEPTION, history :: HISTORY | eff) Unit
+goTo url = do
+  w <- window
+  h <- history w
+  pushState (toForeign "") (DocumentTitle url) (URL url) h
+  void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w)
