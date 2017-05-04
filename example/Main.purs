@@ -15,7 +15,6 @@ import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty(..))
 import Data.Nullable (toMaybe)
 import Data.Tuple (Tuple(..))
-import Optic.Getter (view)
 import Partial.Unsafe (unsafePartial)
 import React (ReactClass, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
@@ -126,4 +125,4 @@ main = void $ elm >>= render (createElement browserRouterClass {router, notFound
   where
     elm = do
       elm' <- window >>= document >>= getElementById (ElementId "app") <<< documentToNonElementParentNode <<< htmlDocumentToDocument
-      pure $ unsafePartial fromJust (toMaybe elm') 
+      pure $ unsafePartial fromJust elm' 
