@@ -120,8 +120,11 @@ router =
       ]
     ]
 
+app :: ReactElement
+app = createElement browserRouterClass {router, notFound: Nothing} []
+
 main :: forall e. Eff (dom :: DOM | e) Unit
-main = void $ elm >>= render (createElement browserRouterClass {router, notFound: Nothing} [])
+main = void $ elm >>= render app
   where
     elm = do
       elm' <- window >>= document >>= getElementById (ElementId "app") <<< documentToNonElementParentNode <<< htmlDocumentToDocument
