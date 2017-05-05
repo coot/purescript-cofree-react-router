@@ -22,7 +22,7 @@ import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
 
 -- | `RouteProps` type, one should not need it, it is used internally.
-newtype RouteProps args = RouteProps { id :: String, args :: NonEmpty Array args }
+newtype RouteProps args = RouteProps { id :: String, args :: Array args }
 
 -- | lens to get the id of route properties
 -- | ```purescript

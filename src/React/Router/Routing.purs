@@ -62,9 +62,7 @@ matchRouter
   => R.Route
   -> Router props args
   -> Maybe (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
-matchRouter url_ router = case shake $ go [] url_ router of
-      Nothing -> Nothing
-      Just cof -> Just cof
+matchRouter url_ router = shake $ go [] url_ router
     where
     -- traverse Cofree and match routes
     go
@@ -78,7 +76,7 @@ matchRouter url_ router = case shake $ go [] url_ router of
           case runMatch (view urlLens route) url' of
             Right (Tuple url args) ->
               let props = case route of
-                            Route idRoute _ _ -> mkProps idRoute (U.snoc argsArr args)
+                            Route idRoute _ _ -> mkProps idRoute (A.snoc argsArr args)
               in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr args) url) (tail r)
             Left _ -> Nothing :< []
 
@@ -88,8 +86,8 @@ runRouter
   :: forall props args
    . (RoutePropsClass props)
   => String
-   -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
-   -> Maybe ReactElement
+  -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+  -> Maybe ReactElement
 runRouter urlStr router = createRouteElement <$> matchRouter (R.parse decodeURIComponent urlStr) router
     where
 
