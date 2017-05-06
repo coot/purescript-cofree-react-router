@@ -6,18 +6,18 @@ module React.Router.Routing
 import Prelude
 import Data.Array as A
 import Data.List as L
-import React.Router.Utils as U
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
+import Data.Lens (view, set)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..))
+import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
-import Data.Lens (view, set)
 import React (ReactElement, createElement)
 import React.Router.Class (class RoutePropsClass, mkProps, idLens)
-import React.Router.Match (runMatch)
 import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
+import Routing.Match (Match(..))
 import Routing.Match.Class (lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
@@ -41,7 +41,8 @@ shake cof = case head cof of
     matchEnd url
       = L.length url == 0
         || L.length url == 1
-        && (either (const false) (const true) $ runMatch (unit <$ lit "") url)
+        && (case (unit <$ lit "") of
+              Match fn -> unV (const false) (const true) $ fn url)
 
     go
       :: Array (Cofree Array (Maybe {url :: R.Route, props :: props args | a }))
@@ -73,12 +74,14 @@ matchRouter url_ router = shake $ go [] url_ router
     go argsArr url' r =
       case head r of
         Tuple route indexRoute ->
-          case runMatch (view urlLens route) url' of
-            Right (Tuple url arg) ->
-              let props = case route of
-                            Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg)
-              in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr arg) url) (tail r)
-            Left _ -> Nothing :< []
+          case view urlLens route of
+            Match mFn ->
+              case unV Left Right (mFn url') of
+                Right (Tuple url arg) ->
+                  let props = case route of
+                                Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg)
+                  in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr arg) url) (tail r)
+                Left _ -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.

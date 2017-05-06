@@ -33,7 +33,7 @@
     "purescript-react-dom": "^3.0.0",
     "purescript-generics": "^4.0.0",
     "purescript-nonempty": "^4.0.0",
-    "purescript-routing": "^5.0.0"
+    "purescript-routing": "^5.1.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
