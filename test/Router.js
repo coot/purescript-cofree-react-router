@@ -72,7 +72,6 @@ function getComponentById(id, element) {
   return null
 }
 
-
 exports._getProp = function(propName) {
   return function getArgs(Just) {
     return function(Nothing) {

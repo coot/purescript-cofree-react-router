@@ -14,15 +14,16 @@ import Prelude
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.NonEmpty (NonEmpty)
 import Data.Tuple (Tuple(..))
 import Data.Lens (Lens', lens)
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
 
--- | `RouteProps` type, one should not need it, it is used internally.
-newtype RouteProps args = RouteProps { id :: String, args :: Array args }
+-- | `RouteProps` type keeps track route related data: id, currently matched
+-- | argument and array of arguments - if the route is nested this will hold
+-- | list of all parent arguments.
+newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg }
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -30,34 +31,34 @@ newtype RouteProps args = RouteProps { id :: String, args :: Array args }
 -- |      props <- getProps this
 -- |      let id = view idLens props
 -- | ```
-idLens :: forall args. Lens' (RouteProps args) String
-idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id -> RouteProps (rp { id=id }))
+idLens :: forall arg. Lens' (RouteProps arg) String
+idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (rp { id = id_ }))
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
   idLens = idLens
-  mkProps name args = RouteProps { id: name, args: args }
+  mkProps name arg args = RouteProps { id: name, arg: arg, args: args }
 
-derive instance newtypeRouteProps :: Newtype (RouteProps args) _
+derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass props args = (RoutePropsClass props) => ReactClass (props args)
+type RouteClass props arg = (RoutePropsClass props) => ReactClass (props arg)
 
 -- | Route type
 -- | The first parameter is an identifier.
-data Route props args = Route String (R.Match args) (RouteClass props args)
+data Route props arg = Route String (R.Match arg) (RouteClass props arg)
 
 -- | IndexRoute type
 -- | The first parameter is the id property.
-data IndexRoute props args = IndexRoute String (RouteClass props args)
+data IndexRoute props arg = IndexRoute String (RouteClass props arg)
 
-instance showRoute :: Show (Route props args) where
+instance showRoute :: Show (Route props arg) where
   show (Route id_ _ _) = "<Route \"" <> id_ <> "\">"
 
 urlLens
-  :: forall props args
+  :: forall props arg
    . (RoutePropsClass props)
-  => Lens' (Route props args) (R.Match args)
+  => Lens' (Route props arg) (R.Match arg)
 urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
 -- | Router
@@ -74,14 +75,14 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |             ]
 -- |         ]
 -- | ```
-type Router props args = (RoutePropsClass props) => Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+type Router props arg = (RoutePropsClass props) => Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
 withoutIndex
-  :: forall props args
+  :: forall props arg
    . (RoutePropsClass props)
-  => Route props args
-  -> Array (Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args))))
-  -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+  => Route props arg
+  -> Array (Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
+  -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route

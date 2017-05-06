@@ -74,10 +74,10 @@ matchRouter url_ router = shake $ go [] url_ router
       case head r of
         Tuple route indexRoute ->
           case runMatch (view urlLens route) url' of
-            Right (Tuple url args) ->
+            Right (Tuple url arg) ->
               let props = case route of
-                            Route idRoute _ _ -> mkProps idRoute (A.snoc argsArr args)
-              in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr args) url) (tail r)
+                            Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg)
+              in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr arg) url) (tail r)
             Left _ -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can

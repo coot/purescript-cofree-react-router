@@ -2,29 +2,29 @@ module Test.Router (
   testSuite
   ) where
 
-import Prelude hiding (div)
 import Data.Array as A
 import Data.StrMap as SM
 import Control.Comonad.Cofree (Cofree, unfoldCofree, (:<))
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import Data.Lens (view)
 import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
-import Data.Newtype (unwrap)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
-import Data.Lens (view)
 import Partial.Unsafe (unsafePartial)
 import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
 import React.Router (matchRouter, runRouter, IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
-import Routing.Match.Class (int, lit)
+import Routing.Match.Class (end, int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
+import Prelude hiding (div)
 
 routeClass :: forall args. RouteClass RouteProps args
 routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
@@ -71,13 +71,16 @@ eqCofree
   -> Boolean
 eqCofree = _eqCofree (\a b -> a.id == b.id && a.indexId == b.indexId)
 
-foreign import _getProp :: String -> (SM.StrMap String -> Maybe (SM.StrMap String)) -> Maybe (SM.StrMap String) -> String -> ReactElement -> Maybe (SM.StrMap String)
+foreign import _getProp :: forall prop. String -> (prop -> Maybe prop) -> Maybe prop -> String -> ReactElement -> Maybe prop
 
-getArgs :: String -> ReactElement -> Maybe (SM.StrMap String)
+getArgs :: forall arg. String -> ReactElement -> Maybe (Array arg)
 getArgs = _getProp "args" Just Nothing
 
-getQuery :: String -> ReactElement -> Maybe (SM.StrMap String)
-getQuery = _getProp "query" Just Nothing
+getArg :: forall arg. String -> ReactElement -> Maybe (arg)
+getArg = _getProp "arg" Just Nothing
+
+-- getQuery :: String -> ReactElement -> Maybe (SM.StrMap String)
+-- getQuery = _getProp "query" Just Nothing
 
 unsafeGetChildren :: ReactElement -> Array ReactElement
 unsafeGetChildren = unsafePerformEff <<< getChildren <<< unsafeCoerceToReactElement
@@ -110,6 +113,20 @@ showChildrenTree = _showCofree showId
     showId :: String -> String
     showId = id
 
+data Locations
+  = User Int
+  | Book Int
+  | Page Int
+  | Ignore
+
+derive instance eqLocations :: Eq Locations
+
+instance showLocations :: Show Locations where
+  show (User i) = "User " <> show i
+  show (Book i) = "Book " <> show i
+  show (Page i) = "Page " <> show i
+  show (Ignore) = "Ignore"
+
 testSuite :: forall eff. TestSuite eff
 testSuite =
     suite "Router" do
@@ -121,7 +138,7 @@ testSuite =
                           , Tuple (Route "user" (unit <$ (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
                             [ Route "book" (unit <$ (lit "books" *> int)) routeClass :+
                               [ Route "pages" (unit <$ lit "pages") routeClass :+
-                                [ Route "page" (unit <$ int) routeClass :+ [] ]
+                                [ Route "page" (unit <$ int <* end) routeClass :+ [] ]
                               ]
                             ]
                             , Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) routeClass :+ []
@@ -140,6 +157,17 @@ testSuite =
                           [ Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
                             [ Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< []
                             , Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ []
+                            ]
+                          ]
+
+                router4 :: Router RouteProps Locations
+                router4 = Route "main" (Ignore <$ lit "") routeClass :+
+                          [ Route "home" (Ignore <$ lit "home") routeClass :+ []
+                          , Tuple (Route "user" (User <$> (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
+                            [ Route "book" (Book <$> (lit "books" *> int)) routeClass :+
+                              [ Route "pages" (Ignore <$ lit "pages") routeClass :+
+                                [ Route "page" (Page <$> int) routeClass :+ [] ]
+                              ]
                             ]
                           ]
 
@@ -321,32 +349,42 @@ testSuite =
                          let cnt = countIndexRoutes el
                           in do
                             assert ("there should be no index route mounted, but found: " <> show cnt) $ cnt == 0
-{--
-  - 
-  -                 test "test args" 
-  -                     let url = "/user/2/books/1/pages/100"
-  -                         expected = SM.fromFoldable 
-  -                             [ Tuple "user_id" "2"
-  -                             , Tuple "book_id" "1"
-  -                             , Tuple "page_id" "100"
-  -                             ]
-  -                      in case runRouter url router of
-  -                              Nothing -> failure $ "router didn't found <" <> url <> ">"
-  -                              Just el -> let margsMain = getArgs "main" el
-  -                                             margsHome = getArgs "user" el
-  -                                          in do
-  -                                            assert ("got props: " <> show ri.props.args <> " expecting " <> show expected) $ ri.props.args == expected
-  -                                            case margsMain, margsHome of
-  -                                                 Just argsMain, Just argsHome -> do
-  -                                                     assert ("got #main props: " <> show argsMain <> " expecting " <> show expected) $ argsMain == expected
-  -                                                     assert ("got #user props: " <> show argsHome <> " expecting " <> show expected) $ argsHome == expected
-  -                                                 Nothing, _ -> failure "main not found"
-  -                                                 _, Nothing -> failure "user not found"
-  --}
+
+                test "test args" 
+                    let url = "/user/2/books/1/pages/100"
+                        userExpected = [Ignore, User 2]
+                        pageExpected = [Ignore, User 2, Book 1, Ignore, Page 100]
+                     in case runRouter url router4 of
+                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Just el -> let margsUser = getArgs "user" el
+                                            margsPage = getArgs "page" el
+                                         in do
+                                           case margsUser, margsPage of
+                                                Just argsUser, Just argsPage -> do
+                                                    assert ("wrong #user args: " <> show argsUser <> " but expected: " <> show userExpected ) $ argsUser == userExpected
+                                                    assert ("wrong #page args: " <> show argsPage <> " but expected: " <> show pageExpected ) $ argsPage == pageExpected
+                                                Nothing, _ -> failure "#user not found"
+                                                _, Nothing -> failure "#page not found"
+
+                test "test arg" 
+                    let url = "/user/2/books/1/pages/100"
+                        userExpected = User 2
+                        pageExpected = Page 100
+                     in case runRouter url router4 of
+                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Just el -> let margUser = getArg "user" el
+                                            margPage = getArg "page" el
+                                         in do
+                                           case margUser, margPage of
+                                                Just argUser, Just argPage -> do
+                                                    assert ("wrong #user arg: " <> show argUser <> " but expected: " <> show userExpected ) $ argUser == userExpected
+                                                    assert ("wrong #page arg: " <> show argPage <> " but expected: " <> show pageExpected ) $ argPage == pageExpected
+                                                Nothing, _ -> failure "#user not found"
+                                                _, Nothing -> failure "#page not found"
 
 
                 {--
-                  - test "test quargs"
+                  - test "test kwargs"
                   -   let url = "/user/2/books/1/pages/100?userId=2&bookId=1&pageId=100"
                   -       expected = SM.fromFoldable 
                   -       [ Tuple "userId" "2"
