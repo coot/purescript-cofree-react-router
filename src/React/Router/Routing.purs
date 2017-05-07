@@ -6,6 +6,7 @@ module React.Router.Routing
 import Prelude
 import Data.Array as A
 import Data.List as L
+import Control.Alt ((<|>))
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
@@ -18,7 +19,7 @@ import React (ReactElement, createElement)
 import React.Router.Class (class RoutePropsClass, mkProps, idLens)
 import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
 import Routing.Match (Match(..))
-import Routing.Match.Class (lit)
+import Routing.Match.Class (end, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
 
@@ -38,11 +39,10 @@ shake cof = case head cof of
            else Nothing
   where
     matchEnd :: R.Route -> Boolean
-    matchEnd url
-      = L.length url == 0
-        || L.length url == 1
-        && (case (unit <$ lit "") of
-              Match fn -> unV (const false) (const true) $ fn url)
+    matchEnd url =
+      -- match end or trailing "/"
+      case end <|> lit "" *> end of
+        Match fn -> unV (const false) (const true) $ fn url
 
     go
       :: Array (Cofree Array (Maybe {url :: R.Route, props :: props args | a }))
