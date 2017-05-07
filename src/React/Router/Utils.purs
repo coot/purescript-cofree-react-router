@@ -1,10 +1,7 @@
 module React.Router.Utils where
 
 import Prelude
-import Data.Array as A
 import Data.List as L
-import Data.Maybe (Maybe(..))
-import Data.NonEmpty (NonEmpty, (:|))
 import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.

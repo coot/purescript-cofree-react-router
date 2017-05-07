@@ -31,8 +31,6 @@
     "purescript-const": "^3.0.0",
     "purescript-maps": "^3.0.0",
     "purescript-react-dom": "^3.0.0",
-    "purescript-generics": "^4.0.0",
-    "purescript-nonempty": "^4.0.0",
     "purescript-routing": "^5.1.0"
   },
   "devDependencies": {

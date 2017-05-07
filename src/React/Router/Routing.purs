@@ -5,7 +5,6 @@ module React.Router.Routing
 
 import Prelude
 import Data.Array as A
-import Data.List as L
 import Control.Alt ((<|>))
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Data.Either (Either(..))
