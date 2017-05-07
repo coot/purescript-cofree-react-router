@@ -40,7 +40,7 @@ There are some assumptions:
 ## Browser history
 For now, only browser history is supported, but it's not to difficult to change
 the
-[`browserRouter`](https://github.com/coot/purescript-cofree-react-router/blob/master/src/React/Router/Components.purs#L52)
+[browserRouter](https://github.com/coot/purescript-cofree-react-router/blob/master/src/React/Router/Components.purs#L52)
 spec to use hash history.
 
 ## Server side rendering
