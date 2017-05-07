@@ -12,10 +12,11 @@ module React.Router.Types
 
 import Prelude
 import Control.Comonad.Cofree ((:<), Cofree)
+import Data.Lens (Lens', lens)
+import Data.Map (Map)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.Tuple (Tuple(..))
-import Data.Lens (Lens', lens)
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
@@ -23,7 +24,7 @@ import Routing.Match (Match) as R
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg }
+newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg, query :: Map String String }
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -36,7 +37,7 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (r
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
   idLens = idLens
-  mkProps name arg args = RouteProps { id: name, arg: arg, args: args }
+  mkProps name arg args query = RouteProps { id: name, arg, args, query }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 

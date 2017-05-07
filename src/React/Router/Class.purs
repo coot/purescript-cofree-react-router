@@ -1,5 +1,7 @@
 module React.Router.Class where
 
+import Data.Map (Map)
+
 import Data.Lens (Lens')
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
@@ -11,4 +13,4 @@ import Data.Lens (Lens')
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props where
   idLens :: forall arg. Lens' (props arg) String
-  mkProps :: forall arg. String -> arg -> Array arg -> props arg
+  mkProps :: forall arg. String -> arg -> Array arg -> Map String String -> props arg

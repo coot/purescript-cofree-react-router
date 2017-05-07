@@ -8,10 +8,12 @@ import Data.Array as A
 import Data.List as L
 import Control.Alt ((<|>))
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
-import Data.Either (Either(..), either)
-import Data.Foldable (foldl)
+import Data.Either (Either(..))
+import Data.Foldable (foldMap, foldl)
 import Data.Lens (view, set)
+import Data.Map (Map) as M
 import Data.Maybe (Maybe(..), maybe)
+import Data.Monoid (mempty)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
@@ -19,9 +21,9 @@ import React (ReactElement, createElement)
 import React.Router.Class (class RoutePropsClass, mkProps, idLens)
 import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
 import Routing.Match (Match(..))
-import Routing.Match.Class (end, lit)
+import Routing.Match.Class (end, lit, params)
 import Routing.Parser (parse) as R
-import Routing.Types (Route) as R
+import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
@@ -40,8 +42,8 @@ shake cof = case head cof of
   where
     matchEnd :: R.Route -> Boolean
     matchEnd url =
-      -- match end or trailing "/"
-      case end <|> lit "" *> end of
+      -- match end, trailing "/" or trailing params
+      case end <|> lit "" *> end <|> params *> end of
         Match fn -> unV (const false) (const true) $ fn url
 
     go
@@ -65,6 +67,13 @@ matchRouter
   -> Maybe (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
 matchRouter url_ router = shake $ go [] url_ router
     where
+    query :: M.Map String String
+    query = foldMap toMap url_
+
+    toMap :: R.RoutePart -> M.Map String String
+    toMap (R.Path _) = mempty
+    toMap (R.Query q) = q
+
     -- traverse Cofree and match routes
     go
       :: Array args
@@ -79,9 +88,9 @@ matchRouter url_ router = shake $ go [] url_ router
               case unV Left Right (mFn url') of
                 Right (Tuple url arg) ->
                   let props = case route of
-                                Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg)
+                                Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg) query
                   in Just {url, props, route, indexRoute} :< map (go (A.snoc argsArr arg) url) (tail r)
-                Left _ -> Nothing :< []
+                Left err -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.
