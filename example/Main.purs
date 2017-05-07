@@ -16,10 +16,9 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.Nullable (toMaybe)
 import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
-import React (ReactClass, createClass, createElement, getChildren, getProps, spec)
+import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
 import React.Router (IndexRoute(..), Route(..), RouteProps, Router, browserRouterClass, link', (:+))
-import React.Router.Utils (last) as R
 import ReactDOM (render)
 import Routing.Match.Class (int, lit, str)
 
@@ -61,7 +60,7 @@ user = createClass $ (spec unit render) { displayName = "User" }
     render this = do
       props <- getProps this
       let uID =
-            case R.last (unwrap props).args of
+            case (unwrap props).arg of
               User uID -> uID
               _ -> 0
           uLink = if uID /= 0
@@ -80,7 +79,7 @@ userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksInde
     render this = do
       props <- getProps this
       let  uID =
-            case R.last $ (unwrap props).args of
+            case (unwrap props).arg of
               User uid -> uid
               _ -> 0
       chrn <- getChildren this
@@ -99,7 +98,7 @@ book = createClass $ (spec unit render) { displayName = "Book" }
   where
     render this = do
       props <- getProps this
-      let book = R.last (unwrap props).args
+      let book = (unwrap props).arg
           bookTitle = case book of
             Book "fp-programming" -> "Functional Programing"
             Book "grothendieck-galois-theory" -> "Grothendick Galois Theory"
