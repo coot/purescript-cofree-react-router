@@ -18,10 +18,10 @@ import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
 import React (ReactElement, createElement)
 import React.Router.Class (class RoutePropsClass, mkProps, idLens)
+import React.Router.Parser (parse)
 import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
 import Routing.Match (Match(..))
 import Routing.Match.Class (end, lit, params)
-import Routing.Parser (parse) as R
 import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Remove all branches that are annotated with `Nothing`
@@ -99,7 +99,7 @@ runRouter
   => String
   -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
   -> Maybe ReactElement
-runRouter urlStr router = createRouteElement <$> matchRouter (R.parse decodeURIComponent urlStr) router
+runRouter urlStr router = createRouteElement <$> matchRouter (parse decodeURIComponent urlStr) router
     where
 
     -- traverse Cofree and produce ReactElement
