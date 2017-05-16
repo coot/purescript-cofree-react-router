@@ -64,7 +64,7 @@ getLocation cfg = do
   s <- search l
   let cfgR = un RouterConfig cfg
   warning
-    (isJust cfgR.baseName && not (hasBaseName cfgR.baseName p))
+    (isNothing cfgR.baseName || (hasBaseName cfgR.baseName p))
     ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
      <> p <> """ to begin with: """ <> (fromMaybe "" cfgR.baseName))
   pure { hash: h, pathname: stripBaseName cfgR.baseName p, search: s }
@@ -98,7 +98,7 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
 
       case runRouter loc props.router of
         Nothing -> do
-          warning true ("Router did not found path '" <> loc <> "'")
+          warning false ("Router did not found path '" <> loc <> "'")
           pure $ renderNotFound props
         Just el -> pure el
 
