@@ -8,6 +8,7 @@ module React.Router.Components
   , goTo
   ) where
 
+import Data.String as S
 import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
@@ -22,7 +23,7 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
-import Data.Maybe (Maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, maybe')
 import Data.Tuple (Tuple)
 import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (<$>), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
@@ -30,7 +31,7 @@ import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
-import React.Router.Types (IndexRoute, Route)
+import React.Router.Types (IndexRoute, Route, Config)
 
 -- | RouterState type
 type RouterState = 
@@ -64,8 +65,9 @@ getLocation = do
 browserRouter
   :: forall eff props args notfound
    . (RoutePropsClass props)
-  => ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM | eff)
-browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
+  => Config
+  -> ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM | eff)
+browserRouter config = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
   where
     initialState this = getLocation
 
@@ -93,7 +95,11 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
 
     handler this ev = do
       loc <- getLocation
-      transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
+      let pathname =
+            case config.basename of
+              Just basename -> fromMaybe loc.pathname $ S.stripPrefix (S.Pattern basename) loc.pathname
+              Nothing -> loc.pathname
+      transformState this (_ { hash = loc.hash, pathname = pathname, search = loc.search })
 
     coerceEff :: forall a e. Eff (dom :: DOM | e) a -> Eff e a
     coerceEff = unsafeCoerceEff
@@ -110,8 +116,9 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
 browserRouterClass
   :: forall props args notfound
    . (RoutePropsClass props)
-  => ReactClass (RouterProps props args notfound)
-browserRouterClass = createClass browserRouter
+  => Config
+  -> ReactClass (RouterProps props args notfound)
+browserRouterClass cfg = createClass (browserRouter cfg)
 
 type LinkProps = {to :: String, props :: Array Props}
 
