@@ -1,5 +1,5 @@
 module React.Router.Types 
-  ( Config
+  ( RouterConfig(RouterConfig)
   , IndexRoute(IndexRoute)
   , Route(Route)
   , RouteClass
@@ -91,7 +91,9 @@ withoutIndex r rs = Tuple r Nothing :< rs
 -- | `:+` lets define routes without index route
 infixr 6 withoutIndex as :+
 
-type Config = { baseName :: Maybe String }
+newtype RouterConfig = RouterConfig { baseName :: Maybe String }
 
-defaultConfig :: Config
-defaultConfig = { baseName: Nothing }
+derive instance newtypeRouterConfig :: Newtype RouterConfig _
+
+defaultConfig :: RouterConfig
+defaultConfig = RouterConfig { baseName: Nothing }

@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react-dom": "^15.4.2",
+    "warning": "^3.0.0"
   },
   "devDependencies": {
     "express": "^4.15.2",
