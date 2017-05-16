@@ -91,7 +91,7 @@ withoutIndex r rs = Tuple r Nothing :< rs
 -- | `:+` lets define routes without index route
 infixr 6 withoutIndex as :+
 
-type Config = { basename :: Maybe String }
+type Config = { baseName :: Maybe String }
 
 defaultConfig :: Config
-defaultConfig = { basename: Nothing }
+defaultConfig = { baseName: Nothing }

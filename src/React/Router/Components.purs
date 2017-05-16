@@ -25,7 +25,7 @@ import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
 import Data.Maybe (Maybe(..), fromMaybe, maybe')
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (<$>), (/=), (<<<), (<>), (>>=))
+import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -51,13 +51,20 @@ type RouterProps props args notFoundProps =
 
 foreign import createPopStateEvent :: String -> Event
 
-getLocation :: forall e. Eff (dom :: DOM | e) { hash :: String, pathname :: String, search :: String }
-getLocation = do
+stripBaseName :: Maybe String -> String -> String
+stripBaseName Nothing s = s
+stripBaseName (Just b) s = fromMaybe s $ S.stripPrefix (S.Pattern b) s
+
+getLocation
+  :: forall e
+   . Config
+  -> Eff (dom :: DOM | e) { hash :: String, pathname :: String, search :: String }
+getLocation cfg = do
   l <- window >>= location
   h <- hash l
   p <- pathname l
   s <- search l
-  pure { hash: h, pathname: p, search: s }
+  pure { hash: h, pathname: stripBaseName cfg.baseName p, search: s }
   
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
@@ -67,9 +74,9 @@ browserRouter
    . (RoutePropsClass props)
   => Config
   -> ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM | eff)
-browserRouter config = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
+browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
   where
-    initialState this = getLocation
+    initialState this = getLocation cfg
 
     renderNotFound props _ = 
       maybe' (\_ -> div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
@@ -77,7 +84,7 @@ browserRouter config = (spec' initialState render) { displayName = "BrowserRoute
     render this = do
       props <- getProps this
       state <- readState this
-      let loc = state.pathname
+      let loc = stripBaseName cfg.baseName state.pathname
             <> if state.search /= ""
                  then "?" <> state.search
                  else ""
@@ -94,12 +101,8 @@ browserRouter config = (spec' initialState render) { displayName = "BrowserRoute
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
 
     handler this ev = do
-      loc <- getLocation
-      let pathname =
-            case config.basename of
-              Just basename -> fromMaybe loc.pathname $ S.stripPrefix (S.Pattern basename) loc.pathname
-              Nothing -> loc.pathname
-      transformState this (_ { hash = loc.hash, pathname = pathname, search = loc.search })
+      loc <- getLocation cfg
+      transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
 
     coerceEff :: forall a e. Eff (dom :: DOM | e) a -> Eff e a
     coerceEff = unsafeCoerceEff
@@ -128,8 +131,8 @@ to = { to: _, props: [] }
 -- | `ReactSpec` for the `link` element; it takes a record of type `LinkProps`
 -- | as properties.  The `props` record property is directly passed to underlying
 -- | `a` element, e.g. this can be used to add css classes.
-linkSpec :: ReactSpec LinkProps Unit ()
-linkSpec = (spec unit render) { displayName = "Link" }
+linkSpec :: Config -> ReactSpec LinkProps Unit ()
+linkSpec cfg = (spec unit render) { displayName = "Link" }
   where
     render this = do
       p <- getProps this
@@ -140,24 +143,29 @@ linkSpec = (spec unit render) { displayName = "Link" }
 
     clickHandler this ev = do
       _ <- preventDefault ev
-      url <- _.to <$> getProps this
-      goTo url
+      { to: url } <-  getProps this
+      goTo cfg url
 
 -- | React class for the `link` element.
-linkClass :: ReactClass LinkProps
-linkClass = createClass linkSpec
+linkClass :: Config -> ReactClass LinkProps
+linkClass = createClass <<< linkSpec
 
 -- | `link` element; use it instead of `a` to route the user through application.
-link :: LinkProps -> Array ReactElement -> ReactElement
-link = createElement linkClass
+link :: Config -> LinkProps -> Array ReactElement -> ReactElement
+link cfg = createElement (linkClass cfg)
 
 -- | as `link`, but with empty properties passed to the underlying `a` element.
-link' :: String -> Array ReactElement -> ReactElement
-link'  = link <<< {to: _, props: []}
+link' :: Config -> String -> Array ReactElement -> ReactElement
+link' cfg = link cfg <<< {to: _, props: []}
 
-goTo :: forall eff. String -> Eff (dom :: DOM, err :: EXCEPTION, history :: HISTORY | eff) Unit
-goTo url = do
+goTo
+  :: forall eff
+   . Config
+  -> String
+  -> Eff (dom :: DOM, err :: EXCEPTION, history :: HISTORY | eff) Unit
+goTo cfg url = do
   w <- window
   h <- history w
-  pushState (toForeign "") (DocumentTitle url) (URL url) h
+  let url_ = fromMaybe "" cfg.baseName <> url
+  pushState (toForeign "") (DocumentTitle url_) (URL url_) h
   void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w)
