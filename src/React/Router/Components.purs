@@ -33,7 +33,7 @@ import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
 import React.Router.Types (IndexRoute, Route, RouterConfig(RouterConfig))
-import React.Router.Utils (warning, hasBaseName, stripBaseName)
+import React.Router.Utils (hasBaseName, joinUrls, stripBaseName, warning)
 
 -- | RouterState type
 type RouterState = 
@@ -65,7 +65,7 @@ getLocation cfg = do
   let cfgR = un RouterConfig cfg
   warning
     (isJust cfgR.baseName && not (hasBaseName cfgR.baseName p))
-    ("""You are using baseName on a page that whose URL path does not begin with it.  Expecting path: """
+    ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
      <> p <> """ to begin with: """ <> (fromMaybe "" cfgR.baseName))
   pure { hash: h, pathname: stripBaseName cfgR.baseName p, search: s }
   
@@ -171,6 +171,6 @@ goTo
 goTo cfg url = do
   w <- window
   h <- history w
-  let url_ = fromMaybe "" (un RouterConfig cfg).baseName <> url
+  let url_ = joinUrls (fromMaybe "" (un RouterConfig cfg).baseName) url
   pushState (toForeign "") (DocumentTitle url_) (URL url_) h
   void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w)
