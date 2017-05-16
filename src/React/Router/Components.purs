@@ -23,10 +23,10 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
-import Data.Maybe (Maybe, fromMaybe, isJust, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, discard, id, not, pure, unit, void, ($), (&&), (/=), (<<<), (<>), (>>=))
+import Prelude (Unit, bind, const, discard, id, not, pure, unit, void, ($), (&&), (/=), (<<<), (<>), (>>=))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -82,8 +82,8 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     initialState this = do
       getLocation cfg
 
-    renderNotFound props _ = 
-      maybe' (\_ -> div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
+    renderNotFound props = 
+      maybe' (const $ div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
 
     render this = do
       props <- getProps this
@@ -96,10 +96,11 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
                  then "#" <> state.hash
                  else ""
 
-      pure $ maybe'
-        (renderNotFound props)
-        id
-        (runRouter loc props.router)
+      case runRouter loc props.router of
+        Nothing -> do
+          warning true ("Router did not found path '" <> loc <> "'")
+          pure $ renderNotFound props
+        Just el -> pure el
 
     componentWillMount this =
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
