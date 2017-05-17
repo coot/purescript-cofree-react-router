@@ -12,7 +12,6 @@ import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
 import DOM.Event.Types (Event)
@@ -23,10 +22,10 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, const, discard, id, not, pure, unit, void, ($), (&&), (/=), (<<<), (<>), (>>=))
+import Prelude (Unit, bind, const, discard, pure, unit, void, ($), (/=), (<<<), (<>), (>>=), (||))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -77,7 +76,7 @@ browserRouter
    . (RoutePropsClass props)
   => RouterConfig
   -> ReactSpec (RouterProps props args notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
-browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
+browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = do
       getLocation cfg
@@ -108,9 +107,6 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     handler this ev = do
       loc <- getLocation cfg
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
-
-    coerceEff :: forall a e. Eff (dom :: DOM | e) a -> Eff e a
-    coerceEff = unsafeCoerceEff
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
