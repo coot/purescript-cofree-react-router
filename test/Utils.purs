@@ -4,9 +4,9 @@ module Test.Utils
 import Prelude
 import Data.Maybe (Maybe(..), isJust)
 import Data.Traversable (sequence_)
+import React.Router.Utils (hasBaseName, joinUrls, stripBaseName)
 import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
-import React.Router.Utils (hasBaseName, stripBaseName)
 
 testSuite :: forall eff. TestSuite eff
 testSuite = suite "Utils" do
@@ -23,3 +23,13 @@ testSuite = suite "Utils" do
   test "stripBaseName" do
     let s = stripBaseName (Just "/home") "/home/url"
     assert ("expected /home/url to be /url but got: " <> s) $ s == "/url"
+
+  test "joinUrls" do
+    let r1 = joinUrls "/a" "/b"
+    assert ("expected /a/b but got " <> r1) $ r1 == "/a/b"
+    let r2 = joinUrls "/a/" "/b"
+    assert ("expected /a/b but got " <> r2) $ r2 == "/a/b"
+    let r3 = joinUrls "/a/" "b" 
+    assert ("expected /a/b bot got " <> r3) $ r3 == "/a/b"
+    let r4 = joinUrls "" "/b"
+    assert ("expected /b bot got " <> r4) $ r4 == "/b"

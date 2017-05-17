@@ -27,3 +27,18 @@ hasBaseName (Just b) s = isJust (S.stripPrefix (S.Pattern b) s) && (S.null rest 
 stripBaseName :: Maybe String -> String -> String
 stripBaseName Nothing s = s
 stripBaseName (Just b) s = S.drop (S.length b) s
+
+joinUrls :: String -> String -> String
+joinUrls a b =
+  if S.null a
+    then b
+    else
+      let _a = if S.charAt (S.length a - 1) a == Just '/'
+                 then S.take (S.length a - 1) a
+                 else a
+          _b = if S.charAt 0 b == Just '/'
+                 then S.drop 1 b
+                 else b
+      in _a <> "/" <> _b
+
+  
