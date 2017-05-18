@@ -25,7 +25,7 @@
   "dependencies": {
     "purescript-free": "^4.0.0",
     "purescript-prelude": "^3.0.0",
-    "purescript-react": "^3.0.0",
+    "purescript-react": "git://github.com/coot/purescript-react#react-15",
     "purescript-newtype": "^2.0.0",
     "purescript-profunctor-lenses": "^3.0.0",
     "purescript-const": "^3.0.0",
