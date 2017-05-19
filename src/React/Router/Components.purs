@@ -87,7 +87,7 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     render this = do
       props <- getProps this
       state <- readState this
-      let loc = stripBaseName (un RouterConfig cfg).baseName state.pathname
+      let loc = state.pathname
             <> if state.search /= ""
                  then "?" <> state.search
                  else ""
