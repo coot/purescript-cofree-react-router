@@ -1,11 +1,13 @@
 module React.Router.Types 
-  ( (:+)
+  ( RouterConfig(RouterConfig)
   , IndexRoute(IndexRoute)
   , Route(Route)
   , RouteClass
   , RouteProps(..)
   , Router
+  , defaultConfig
   , withoutIndex
+  , (:+)
   -- lenses
   , urlLens
   ) where
@@ -88,3 +90,10 @@ withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route
 infixr 6 withoutIndex as :+
+
+newtype RouterConfig = RouterConfig { baseName :: Maybe String }
+
+derive instance newtypeRouterConfig :: Newtype RouterConfig _
+
+defaultConfig :: RouterConfig
+defaultConfig = RouterConfig { baseName: Nothing }

@@ -10,8 +10,8 @@ module React.Router.Components
 
 import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
 import DOM.Event.Types (Event)
@@ -22,15 +22,17 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
-import Data.Maybe (Maybe, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe')
+import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, discard, id, pure, unit, void, ($), (<$>), (/=), (<<<), (<>), (>>=))
+import Prelude (Unit, bind, const, discard, pure, unit, void, ($), (/=), (<<<), (<>), (>>=), (||))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
-import React.Router.Types (IndexRoute, Route)
+import React.Router.Types (IndexRoute, Route, RouterConfig(RouterConfig))
+import React.Router.Utils (hasBaseName, joinUrls, stripBaseName, warning)
 
 -- | RouterState type
 type RouterState = 
@@ -50,13 +52,21 @@ type RouterProps props arg notFoundProps =
 
 foreign import createPopStateEvent :: String -> Event
 
-getLocation :: forall e. Eff (dom :: DOM | e) { hash :: String, pathname :: String, search :: String }
-getLocation = do
+getLocation
+  :: forall e
+   . RouterConfig
+  -> Eff (dom :: DOM, console :: CONSOLE | e) { hash :: String, pathname :: String, search :: String }
+getLocation cfg = do
   l <- window >>= location
   h <- hash l
   p <- pathname l
   s <- search l
-  pure { hash: h, pathname: p, search: s }
+  let cfgR = un RouterConfig cfg
+  warning
+    (isNothing cfgR.baseName || (hasBaseName cfgR.baseName p))
+    ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
+     <> p <> """ to begin with: """ <> (fromMaybe "" cfgR.baseName))
+  pure { hash: h, pathname: stripBaseName cfgR.baseName p, search: s }
   
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
@@ -64,13 +74,15 @@ getLocation = do
 browserRouter
   :: forall eff props arg notfound
    . (RoutePropsClass props arg)
-  => ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM | eff)
-browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = coerceEff <<< componentWillMount }
+  => RouterConfig
+  -> ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
+browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
-    initialState this = getLocation
+    initialState this = do
+      getLocation cfg
 
-    renderNotFound props _ = 
-      maybe' (\_ -> div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
+    renderNotFound props = 
+      maybe' (const $ div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
 
     render this = do
       props <- getProps this
@@ -83,20 +95,18 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
                  then "#" <> state.hash
                  else ""
 
-      pure $ maybe'
-        (renderNotFound props)
-        id
-        (runRouter loc props.router)
+      case runRouter loc props.router of
+        Nothing -> do
+          warning false ("Router did not found path '" <> loc <> "'")
+          pure $ renderNotFound props
+        Just el -> pure el
 
     componentWillMount this =
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
 
     handler this ev = do
-      loc <- getLocation
+      loc <- getLocation cfg
       transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
-
-    coerceEff :: forall a e. Eff (dom :: DOM | e) a -> Eff e a
-    coerceEff = unsafeCoerceEff
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
@@ -110,8 +120,9 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
 browserRouterClass
   :: forall props arg notfound
    . (RoutePropsClass props arg)
-  => ReactClass (RouterProps props arg notfound)
-browserRouterClass = createClass browserRouter
+  => RouterConfig
+  -> ReactClass (RouterProps props arg notfound)
+browserRouterClass cfg = createClass (browserRouter cfg)
 
 type LinkProps = {to :: String, props :: Array Props}
 
@@ -121,8 +132,8 @@ to = { to: _, props: [] }
 -- | `ReactSpec` for the `link` element; it takes a record of type `LinkProps`
 -- | as properties.  The `props` record property is directly passed to underlying
 -- | `a` element, e.g. this can be used to add css classes.
-linkSpec :: ReactSpec LinkProps Unit ()
-linkSpec = (spec unit render) { displayName = "Link" }
+linkSpec :: RouterConfig -> ReactSpec LinkProps Unit ()
+linkSpec cfg = (spec unit render) { displayName = "Link" }
   where
     render this = do
       p <- getProps this
@@ -133,24 +144,29 @@ linkSpec = (spec unit render) { displayName = "Link" }
 
     clickHandler this ev = do
       _ <- preventDefault ev
-      url <- _.to <$> getProps this
-      goTo url
+      { to: url } <-  getProps this
+      goTo cfg url
 
 -- | React class for the `link` element.
-linkClass :: ReactClass LinkProps
-linkClass = createClass linkSpec
+linkClass :: RouterConfig -> ReactClass LinkProps
+linkClass = createClass <<< linkSpec
 
 -- | `link` element; use it instead of `a` to route the user through application.
-link :: LinkProps -> Array ReactElement -> ReactElement
-link = createElement linkClass
+link :: RouterConfig -> LinkProps -> Array ReactElement -> ReactElement
+link cfg = createElement (linkClass cfg)
 
 -- | as `link`, but with empty properties passed to the underlying `a` element.
-link' :: String -> Array ReactElement -> ReactElement
-link'  = link <<< {to: _, props: []}
+link' :: RouterConfig -> String -> Array ReactElement -> ReactElement
+link' cfg = link cfg <<< {to: _, props: []}
 
-goTo :: forall eff. String -> Eff (dom :: DOM, err :: EXCEPTION, history :: HISTORY | eff) Unit
-goTo url = do
+goTo
+  :: forall eff
+   . RouterConfig
+  -> String
+  -> Eff (dom :: DOM, err :: EXCEPTION, history :: HISTORY | eff) Unit
+goTo cfg url = do
   w <- window
   h <- history w
-  pushState (toForeign "") (DocumentTitle url) (URL url) h
+  let url_ = joinUrls (fromMaybe "" (un RouterConfig cfg).baseName) url
+  pushState (toForeign "") (DocumentTitle url_) (URL url_) h
   void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w)
