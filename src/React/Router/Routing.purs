@@ -27,10 +27,10 @@ import Routing.Types (Route, RoutePart(..)) as R
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
 shake
-  :: forall a props args
-   . (RoutePropsClass props)
-  => Cofree Array (Maybe {url :: R.Route, props :: props args | a})
-  -> Maybe (Cofree Array {url :: R.Route, props :: props args | a})
+  :: forall a props arg
+   . (RoutePropsClass props arg)
+  => Cofree Array (Maybe {url :: R.Route, props :: props arg | a})
+  -> Maybe (Cofree Array {url :: R.Route, props :: props arg | a})
 shake cof = case head cof of
     Nothing -> Nothing
     Just r ->
@@ -46,8 +46,8 @@ shake cof = case head cof of
         Match fn -> unV (const false) (const true) $ fn url
 
     go
-      :: Array (Cofree Array (Maybe {url :: R.Route, props :: props args | a }))
-      -> Array (Cofree Array {url :: R.Route, props :: props args | a})
+      :: Array (Cofree Array (Maybe {url :: R.Route, props :: props arg | a }))
+      -> Array (Cofree Array {url :: R.Route, props :: props arg | a})
     go cofs = foldl f [] cofs
       where 
         f cofs_ cof_ = case head cof_ of
@@ -59,11 +59,11 @@ shake cof = case head cof of
                               else cofs_
 
 matchRouter
-  :: forall props args
-   . (RoutePropsClass props)
+  :: forall props arg
+   . (RoutePropsClass props arg)
   => R.Route
-  -> Router props args
-  -> Maybe (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
+  -> Router props arg
+  -> Maybe (Cofree Array {url :: R.Route, props :: props arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
 matchRouter url_ router = shake $ go [] url_ router
     where
     query :: M.Map String String
@@ -75,10 +75,10 @@ matchRouter url_ router = shake $ go [] url_ router
 
     -- traverse Cofree and match routes
     go
-      :: Array args
+      :: Array arg
       -> R.Route
-      -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
-      -> Cofree Array (Maybe {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
+      -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+      -> Cofree Array (Maybe {url :: R.Route, props :: props arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
     go argsArr url' r =
       case head r of
         Tuple route indexRoute ->
@@ -94,23 +94,23 @@ matchRouter url_ router = shake $ go [] url_ router
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.
 runRouter
-  :: forall props args
-   . (RoutePropsClass props)
+  :: forall props arg
+   . (RoutePropsClass props arg)
   => String
-  -> Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+  -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   -> Maybe ReactElement
 runRouter urlStr router = createRouteElement <$> matchRouter (parse decodeURIComponent urlStr) router
     where
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)}
+      :: Cofree Array {url :: R.Route, props :: props arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
       -> ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
 
     asElement
-      :: {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)}
-      -> Array (Cofree Array {url :: R.Route, props :: props args, route :: Route props args, indexRoute :: Maybe (IndexRoute props args)})
+      :: {url :: R.Route, props :: props arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+      -> Array (Cofree Array {url :: R.Route, props :: props arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
       -> ReactElement
     asElement {url, props, route: route@(Route _ _ cls), indexRoute} [] =
       createElement cls props (addIndex [])
