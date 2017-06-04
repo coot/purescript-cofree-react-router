@@ -11,6 +11,6 @@ import Data.Lens (Lens')
 -- | nonempty array of args read from the url.  You can use
 -- | `React.Router.Utils.last` function to get the last element of the array
 -- | with arguments obtained from the corrsponding url part.
-class RoutePropsClass props where
-  idLens :: forall arg. Lens' (props arg) String
-  mkProps :: forall arg. String -> arg -> Array arg -> Map String String -> props arg
+class RoutePropsClass props arg | props -> arg where
+  idLens :: Lens' (props arg) String
+  mkProps :: String -> arg -> Array arg -> Map String String -> props arg

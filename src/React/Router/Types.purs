@@ -35,7 +35,7 @@ newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array ar
 idLens :: forall arg. Lens' (RouteProps arg) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (rp { id = id_ }))
 
-instance routePropsRoutePropsClass :: RoutePropsClass RouteProps where
+instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
   idLens = idLens
   mkProps name arg args query = RouteProps { id: name, arg, args, query }
 
@@ -43,7 +43,7 @@ derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass props arg = (RoutePropsClass props) => ReactClass (props arg)
+type RouteClass props arg = (RoutePropsClass props arg) => ReactClass (props arg)
 
 -- | Route type
 -- | The first parameter is an identifier.
@@ -58,7 +58,7 @@ instance showRoute :: Show (Route props arg) where
 
 urlLens
   :: forall props arg
-   . (RoutePropsClass props)
+   . (RoutePropsClass props arg)
   => Lens' (Route props arg) (R.Match arg)
 urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
@@ -76,11 +76,11 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |             ]
 -- |         ]
 -- | ```
-type Router props arg = (RoutePropsClass props) => Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type Router props arg = (RoutePropsClass props arg) => Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
 withoutIndex
   :: forall props arg
-   . (RoutePropsClass props)
+   . (RoutePropsClass props arg)
   => Route props arg
   -> Array (Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
   -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
