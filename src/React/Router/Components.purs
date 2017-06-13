@@ -8,6 +8,7 @@ module React.Router.Components
   , goTo
   ) where
 
+
 import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
@@ -25,7 +26,7 @@ import Data.Foreign (toForeign)
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, const, discard, pure, unit, void, ($), (/=), (<<<), (<>), (>>=), (||))
+import Prelude (Unit, bind, const, discard, pure, unit, void, ($), (<<<), (<>), (>>=), (||))
 import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -87,13 +88,7 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     render this = do
       props <- getProps this
       state <- readState this
-      let loc = state.pathname
-            <> if state.search /= ""
-                 then "?" <> state.search
-                 else ""
-            <> if state.hash /= ""
-                 then "#" <> state.hash
-                 else ""
+      let loc = state.pathname <> state.search <> state.hash
 
       case runRouter loc props.router of
         Nothing -> do
