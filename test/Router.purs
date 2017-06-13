@@ -6,19 +6,16 @@ import Data.Array as A
 import Data.Map as M
 import Control.Comonad.Cofree (Cofree, unfoldCofree, (:<))
 import Control.Monad.Aff (Aff)
-import Control.Monad.Eff.Console (log)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
 import Data.Lens (view)
-import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Maybe (Maybe(Nothing, Just), maybe)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
-import Partial.Unsafe (unsafePartial)
-import React (ReactElement, ReactThis, createClass, createClassStateless, createElement, getChildren, getProps, spec)
+import React (ReactElement, ReactThis, createClass, createClassStateless, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id)
 import React.Router (matchRouter, runRouter, IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
-import Routing.Match.Class (end, int, lit)
+import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
 import Test.Unit (TestSuite, failure, success, suite, test)
@@ -184,7 +181,7 @@ testSuite =
                   :: Router RouteProps Unit
                   -> String
                   -> Cofree Array { id :: String, indexId :: Maybe String }
-                  -> Aff _ Unit
+                  -> Aff eff Unit
                 checkTree router_ url expected =
                   case idTree <$> matchRouter (R.parse decodeURIComponent url) router_ of
                        Nothing -> failure $ "router did't found <" <> url <> ">"

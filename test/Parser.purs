@@ -4,14 +4,9 @@ module Test.Parser
 import Prelude
 import Data.List as L
 import Data.Map as M
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Exception (EXCEPTION)
 import Data.Foldable (foldMap)
-import Data.List (List(..), (:))
-import Data.List (zip)
-import Data.Maybe (Maybe(..), isJust)
+import Data.List (List(..), zip, (:))
+import Data.Maybe (Maybe(Nothing, Just))
 import Data.Monoid (mempty)
 import Data.Monoid.Disj (Disj(..))
 import Data.Newtype (ala)
@@ -19,12 +14,8 @@ import Data.Traversable (sequence_)
 import Data.Tuple (Tuple(..))
 import React.Router.Parser (parse)
 import Routing.Types (RoutePart(..))
-import Test.Parser (testSuite) as Parser
-import Test.Router (testSuite) as Router
-import Test.Unit (TestSuite, failure, success, suite, test)
+import Test.Unit (TestSuite, suite, test)
 import Test.Unit.Assert (assert)
-import Test.Unit.Console (TESTOUTPUT)
-import Test.Unit.Main (runTest)
 
 testSuite :: forall eff. TestSuite eff
 testSuite =
@@ -55,7 +46,7 @@ testSuite =
       let url = "/home?a=1&b=2/"
           rs = parse id url
 
-          lastIsEmpty rs =
+          lastIsEmpty =
             case L.last rs of
               Just (Path p) -> p == ""
               Just _ -> false
@@ -68,6 +59,6 @@ testSuite =
 
       in do
         assert "unexpected length" $ L.length rs == 4
-        assert "last path part is not empty string" $ lastIsEmpty rs
+        assert "last path part is not empty string" $ lastIsEmpty
         assert "should contain query" $ containsQuery
 

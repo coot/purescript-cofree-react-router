@@ -2,10 +2,9 @@ module Test.Utils
   ( testSuite ) where
 
 import Prelude
-import Data.Maybe (Maybe(..), isJust)
-import Data.Traversable (sequence_)
+import Data.Maybe (Maybe(Just, Nothing))
 import React.Router.Utils (hasBaseName, joinUrls, stripBaseName)
-import Test.Unit (TestSuite, failure, success, suite, test)
+import Test.Unit (TestSuite, suite, test)
 import Test.Unit.Assert (assert)
 
 testSuite :: forall eff. TestSuite eff
