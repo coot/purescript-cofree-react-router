@@ -43,10 +43,10 @@ indexRouteClass =
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
 idTree
-  :: forall args
-   . Cofree Array {url :: R.Route, props :: RouteProps args, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args)}
+  :: forall args r
+   . Cofree Array {url :: R.Route, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r}
   -> Cofree Array {id :: String, indexId :: Maybe String}
-idTree = map (\{url, props, route, indexRoute} -> {id: (view idLens props), indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
+idTree = map (\{url, route: (Route id_ _ _), indexRoute} -> {id: id_, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
 foreign import getIds :: ReactElement -> Array String
 
