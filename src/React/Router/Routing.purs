@@ -10,7 +10,7 @@ import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Control.Monad.State (State, evalState, get, modify)
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Foldable (foldMap, foldl)
+import Data.Foldable (foldMap, foldr)
 import Data.Lens (view, set)
 import Data.Map (Map) as M
 import Data.Maybe (Maybe(..), maybe)
@@ -51,14 +51,14 @@ shake cof = case head cof of
     go
       :: Array (Cofree Array (Maybe {url :: R.Route, arg :: arg | a }))
       -> Array (Cofree Array {url :: R.Route, arg :: arg | a})
-    go cofs = foldl f [] cofs
+    go cofs = foldr f [] cofs
       where 
-        f cofs_ cof_ = case head cof_ of
+        f cof_ cofs_ = case head cof_ of
                        Nothing -> cofs_
                        Just cofHead ->
                          let tail_ = go $ tail cof_
                          in if A.length tail_ /= 0 || matchEnd cofHead.url
-                              then A.snoc cofs_ (cofHead :< go (tail cof_))
+                              then A.cons (cofHead :< go (tail cof_)) cofs_
                               else cofs_
 
 matchRouter
@@ -117,12 +117,12 @@ runRouter urlStr router =
       args <- get
       let 
         props :: props arg
-        props = mkProps id_ arg (A.snoc args arg) query []
+        props = mkProps id_ arg (A.cons arg args) query []
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
     asElement {arg, route: (Route id_ _ cls), indexRoute} cofs = do
-      modify (flip A.snoc arg)
+      modify (A.cons arg)
       args <- get
       children <- sequence $ createRouteElement <$> cofs
       pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) children

@@ -256,9 +256,9 @@ testSuite =
 
                 test "mount various paths with indexes" $
                   let rtr = Route "main" (unit <$ lit "") routeClass :+
-                              [ Tuple (Route "users" (unit <$ lit "users") routeClass) (Just $ IndexRoute "users-index" indexRouteClass) :< []
-                              , Tuple (Route "books" (unit <$ lit "users") routeClass) (Just $ IndexRoute "books-index" indexRouteClass) :< []
-                              ]
+                               [ Tuple (Route "users" (unit <$ lit "users") routeClass) (Just $ IndexRoute "users-index" indexRouteClass) :< []
+                               , Tuple (Route "books" (unit <$ lit "users") routeClass) (Just $ IndexRoute "books-index" indexRouteClass) :< []
+                               ]
                    in do
                       checkTree rtr "/users" $
                         {id: "main", indexId: Nothing} :<
@@ -352,8 +352,8 @@ testSuite =
 
                 test "test args" 
                     let url = "/user/2/books/1/pages/100"
-                        userExpected = [Ignore, User 2]
-                        pageExpected = [Ignore, User 2, Book 1, Ignore, Page 100]
+                        userExpected = [User 2, Ignore]
+                        pageExpected = [Page 100, Ignore, Book 1, User 2, Ignore] -- [Ignore, User 2, Book 1, Ignore, Page 100]
                      in case runRouter url router4 of
                              Nothing -> failure $ "router didn't found <" <> url <> ">"
                              Just el -> let margsUser = getArgs "user" el
@@ -361,8 +361,8 @@ testSuite =
                                          in do
                                            case margsUser, margsPage of
                                                 Just argsUser, Just argsPage -> do
-                                                    assert ("wrong #user args: " <> show argsUser <> " but expected: " <> show userExpected ) $ argsUser == userExpected
-                                                    assert ("wrong #page args: " <> show argsPage <> " but expected: " <> show pageExpected ) $ argsPage == pageExpected
+                                                    assert ("wrong #user args at " <> url <> " " <> show argsUser <> " but expected: " <> show userExpected ) $ argsUser == userExpected
+                                                    assert ("wrong #page args at " <> url <> " " <> show argsPage <> " but expected: " <> show pageExpected ) $ argsPage == pageExpected
                                                 Nothing, _ -> failure "#user not found"
                                                 _, Nothing -> failure "#page not found"
 
