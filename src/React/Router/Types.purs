@@ -22,11 +22,12 @@ import Data.Tuple (Tuple(..))
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
+import Routing.Types (Route) as R
 
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg, query :: Map String String }
+newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg, query :: Map String String, tail :: Array (Cofree Array {url :: R.Route, arg :: arg})}
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -39,7 +40,7 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (r
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
   idLens = idLens
-  mkProps name arg args query = RouteProps { id: name, arg, args, query }
+  mkProps name arg args query tail = RouteProps { id: name, arg, args, query, tail }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 

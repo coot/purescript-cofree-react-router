@@ -1,8 +1,10 @@
 module React.Router.Class where
 
-import Data.Map (Map)
 
+import Control.Comonad.Cofree (Cofree)
 import Data.Lens (Lens')
+import Data.Map (Map)
+import Routing.Types (Route) as R
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
 -- | each `RouteClass` react class component.  There is one instance
@@ -13,4 +15,4 @@ import Data.Lens (Lens')
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props arg | props -> arg where
   idLens :: Lens' (props arg) String
-  mkProps :: String -> arg -> Array arg -> Map String String -> props arg
+  mkProps :: String -> arg -> Array arg -> Map String String -> Array (Cofree Array {url :: R.Route, arg :: arg}) -> props arg

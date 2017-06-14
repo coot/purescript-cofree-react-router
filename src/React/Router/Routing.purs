@@ -26,6 +26,7 @@ import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
 import Routing.Match (Match(..))
 import Routing.Match.Class (end, lit, params)
 import Routing.Types (Route, RoutePart(..)) as R
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
@@ -66,7 +67,7 @@ matchRouter
   => R.Route
   -> Router props arg
   -> Maybe (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
-matchRouter url_ router = shake $ go [] url_ router
+matchRouter url_ router = shake $ go url_ router
     where
     -- traverse Cofree and match routes
     go
@@ -112,16 +113,19 @@ runRouter urlStr router =
       :: {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
       -> Array (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
       -> State (Array arg) ReactElement
-    asElement {url, arg, route: route@(Route id_ _ cls), indexRoute} [] = do
+    asElement {arg, route: route@(Route id_ _ cls), indexRoute} [] = do
       args <- get
       let 
         props :: props arg
-        props = mkProps id_ arg (A.snoc args arg) query
+        props = mkProps id_ arg (A.snoc args arg) query []
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
-    asElement {url, arg, route: (Route id_ _ cls), indexRoute} cofs = do
+    asElement {arg, route: (Route id_ _ cls), indexRoute} cofs = do
       modify (flip A.snoc arg)
       args <- get
       children <- sequence $ createRouteElement <$> cofs
-      pure $ createElement cls (mkProps id_ arg args query) children
+      pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) children
+
+    coerce :: forall r. Array (Cofree Array {url :: R.Route, arg :: arg | r}) -> Array (Cofree Array {url :: R.Route, arg :: arg })
+    coerce = unsafeCoerce
