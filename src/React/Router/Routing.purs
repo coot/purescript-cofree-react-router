@@ -70,20 +70,16 @@ matchRouter url_ router = shake $ go [] url_ router
     where
     -- traverse Cofree and match routes
     go
-      :: Array arg
-      -> R.Route
+      :: R.Route
       -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
       -> Cofree Array (Maybe {url :: R.Route, arg:: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
-    go argsArr url' r =
+    go url' r =
       case head r of
         Tuple route indexRoute ->
           case view urlLens route of
             Match mFn ->
               case unV Left Right (mFn url') of
-                Right (Tuple url arg) ->
-                  let -- props = case route of Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg) query
-                      args = A.snoc argsArr arg
-                  in Just {url, arg, route, indexRoute} :< map (go args url) (tail r)
+                Right (Tuple url arg) -> Just {url, arg, route, indexRoute} :< map (go url) (tail r)
                 Left err -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
