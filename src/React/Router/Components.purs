@@ -23,6 +23,7 @@ import DOM.HTML.Location (hash, pathname, search)
 import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
+import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
@@ -44,7 +45,7 @@ type RouterState =
 
 -- | RouterProps type
 type RouterProps props arg notFoundProps =
-  { router :: Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  { router :: Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   , notFound :: Maybe
     { cls :: ReactClass notFoundProps
     , props :: notFoundProps

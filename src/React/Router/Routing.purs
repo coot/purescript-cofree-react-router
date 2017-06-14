@@ -12,6 +12,7 @@ import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldMap, foldr)
 import Data.Lens (view, set)
+import Data.List (List(..), null, toUnfoldable, (:))
 import Data.Map (Map) as M
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
@@ -32,13 +33,13 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | it also elminates not fully consumed URLs
 shake
   :: forall a arg
-   . Cofree Array (Maybe {url :: R.Route, arg :: arg | a})
-  -> Maybe (Cofree Array {url :: R.Route, arg :: arg | a})
+   . Cofree List (Maybe {url :: R.Route, arg :: arg | a})
+  -> Maybe (Cofree List {url :: R.Route, arg :: arg | a})
 shake cof = case head cof of
     Nothing -> Nothing
     Just r ->
       let tail_ = go (tail cof)
-      in if A.length tail_ /= 0 || matchEnd r.url
+      in if not (null tail_) || matchEnd r.url
            then Just (r :< tail_)
            else Nothing
   where
@@ -49,16 +50,16 @@ shake cof = case head cof of
         Match fn -> unV (const false) (const true) $ fn url
 
     go
-      :: Array (Cofree Array (Maybe {url :: R.Route, arg :: arg | a }))
-      -> Array (Cofree Array {url :: R.Route, arg :: arg | a})
-    go cofs = foldr f [] cofs
+      :: List (Cofree List (Maybe {url :: R.Route, arg :: arg | a }))
+      -> List (Cofree List {url :: R.Route, arg :: arg | a})
+    go cofs = foldr f Nil cofs
       where 
         f cof_ cofs_ = case head cof_ of
                        Nothing -> cofs_
                        Just cofHead ->
                          let tail_ = go $ tail cof_
-                         in if A.length tail_ /= 0 || matchEnd cofHead.url
-                              then A.cons (cofHead :< go (tail cof_)) cofs_
+                         in if not (null tail_) || matchEnd cofHead.url
+                              then (cofHead :< go (tail cof_)) : cofs_
                               else cofs_
 
 matchRouter
@@ -66,14 +67,14 @@ matchRouter
    . (RoutePropsClass props arg)
   => R.Route
   -> Router props arg
-  -> Maybe (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+  -> Maybe (Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
 matchRouter url_ router = shake $ go url_ router
     where
     -- traverse Cofree and match routes
     go
       :: R.Route
-      -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
-      -> Cofree Array (Maybe {url :: R.Route, arg:: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+      -> Cofree List (Maybe {url :: R.Route, arg:: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
     go url' r =
       case head r of
         Tuple route indexRoute ->
@@ -81,7 +82,7 @@ matchRouter url_ router = shake $ go url_ router
             Match mFn ->
               case unV Left Right (mFn url') of
                 Right (Tuple url arg) -> Just {url, arg, route, indexRoute} :< map (go url) (tail r)
-                Left err -> Nothing :< []
+                Left err -> Nothing :< Nil
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.
@@ -89,10 +90,10 @@ runRouter
   :: forall props arg
    . (RoutePropsClass props arg)
   => String
-  -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   -> Maybe ReactElement
 runRouter urlStr router =
-  evalState (sequence $ createRouteElement <$> matchRouter url_ router) []
+  evalState (sequence $ createRouteElement <$> matchRouter url_ router) Nil
     where
     url_ = parse decodeURIComponent urlStr
 
@@ -105,27 +106,27 @@ runRouter urlStr router =
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
-      -> State (Array arg) ReactElement
+      :: Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+      -> State (List arg) ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
 
     asElement
       :: {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
-      -> Array (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
-      -> State (Array arg) ReactElement
-    asElement {arg, route: route@(Route id_ _ cls), indexRoute} [] = do
+      -> List (Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      -> State (List arg) ReactElement
+    asElement {arg, route: route@(Route id_ _ cls), indexRoute} Nil = do
       args <- get
       let 
         props :: props arg
-        props = mkProps id_ arg (A.cons arg args) query []
+        props = mkProps id_ arg (arg : args) query Nil
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
     asElement {arg, route: (Route id_ _ cls), indexRoute} cofs = do
-      modify (A.cons arg)
+      modify (arg : _)
       args <- get
       children <- sequence $ createRouteElement <$> cofs
-      pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) children
+      pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) (toUnfoldable children)
 
-    coerce :: forall r. Array (Cofree Array {url :: R.Route, arg :: arg | r}) -> Array (Cofree Array {url :: R.Route, arg :: arg })
+    coerce :: forall r. List (Cofree List {url :: R.Route, arg :: arg | r}) -> List (Cofree List {url :: R.Route, arg :: arg })
     coerce = unsafeCoerce

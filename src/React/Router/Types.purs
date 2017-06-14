@@ -13,8 +13,10 @@ module React.Router.Types
   ) where
 
 import Prelude
+
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Lens (Lens', lens)
+import Data.List (List)
 import Data.Map (Map)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
@@ -27,7 +29,7 @@ import Routing.Types (Route) as R
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg, query :: Map String String, tail :: Array (Cofree Array {url :: R.Route, arg :: arg})}
+newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: List arg, query :: Map String String, tail :: List (Cofree List {url :: R.Route, arg :: arg})}
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -79,18 +81,18 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |             ]
 -- |         ]
 -- | ```
-type Router props arg = (RoutePropsClass props arg) => Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type Router props arg = (RoutePropsClass props arg) => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
 withoutIndex
   :: forall props arg
    . (RoutePropsClass props arg)
   => Route props arg
-  -> Array (Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
-  -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  -> List (Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
+  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route
-infixr 6 withoutIndex as :+
+infixr 5 withoutIndex as :+
 
 newtype RouterConfig = RouterConfig { baseName :: Maybe String }
 
