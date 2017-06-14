@@ -7,6 +7,7 @@ import Prelude
 
 import Control.Alt ((<|>))
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
+import Control.Monad.State (State, evalState, get, modify)
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldMap, foldl)
@@ -14,6 +15,7 @@ import Data.Lens (view, set)
 import Data.Map (Map) as M
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
+import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
@@ -29,8 +31,8 @@ import Routing.Types (Route, RoutePart(..)) as R
 -- | it also elminates not fully consumed URLs
 shake
   :: forall a arg
-   . Cofree Array (Maybe {url :: R.Route, arg :: arg, args :: Array arg | a})
-  -> Maybe (Cofree Array {url :: R.Route, arg :: arg, args :: Array arg | a})
+   . Cofree Array (Maybe {url :: R.Route, arg :: arg | a})
+  -> Maybe (Cofree Array {url :: R.Route, arg :: arg | a})
 shake cof = case head cof of
     Nothing -> Nothing
     Just r ->
@@ -46,8 +48,8 @@ shake cof = case head cof of
         Match fn -> unV (const false) (const true) $ fn url
 
     go
-      :: Array (Cofree Array (Maybe {url :: R.Route, arg :: arg, args :: Array arg | a }))
-      -> Array (Cofree Array {url :: R.Route, arg :: arg, args :: Array arg | a})
+      :: Array (Cofree Array (Maybe {url :: R.Route, arg :: arg | a }))
+      -> Array (Cofree Array {url :: R.Route, arg :: arg | a})
     go cofs = foldl f [] cofs
       where 
         f cofs_ cof_ = case head cof_ of
@@ -63,7 +65,7 @@ matchRouter
    . (RoutePropsClass props arg)
   => R.Route
   -> Router props arg
-  -> Maybe (Cofree Array {url :: R.Route, arg :: arg, args :: Array arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+  -> Maybe (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
 matchRouter url_ router = shake $ go [] url_ router
     where
     -- traverse Cofree and match routes
@@ -71,7 +73,7 @@ matchRouter url_ router = shake $ go [] url_ router
       :: Array arg
       -> R.Route
       -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
-      -> Cofree Array (Maybe {url :: R.Route, arg:: arg, args :: Array arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      -> Cofree Array (Maybe {url :: R.Route, arg:: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
     go argsArr url' r =
       case head r of
         Tuple route indexRoute ->
@@ -81,7 +83,7 @@ matchRouter url_ router = shake $ go [] url_ router
                 Right (Tuple url arg) ->
                   let -- props = case route of Route idRoute _ _ -> mkProps idRoute arg (A.snoc argsArr arg) query
                       args = A.snoc argsArr arg
-                  in Just {url, arg, args, route, indexRoute} :< map (go args url) (tail r)
+                  in Just {url, arg, route, indexRoute} :< map (go args url) (tail r)
                 Left err -> Nothing :< []
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
@@ -92,7 +94,8 @@ runRouter
   => String
   -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   -> Maybe ReactElement
-runRouter urlStr router = createRouteElement <$> matchRouter url_ router
+runRouter urlStr router =
+  evalState (sequence $ createRouteElement <$> matchRouter url_ router) []
     where
     url_ = parse decodeURIComponent urlStr
 
@@ -105,24 +108,24 @@ runRouter urlStr router = createRouteElement <$> matchRouter url_ router
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree Array {url :: R.Route, arg :: arg, args :: Array arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
-      -> ReactElement
+      :: Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+      -> State (Array arg) ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
 
     asElement
-      :: {url :: R.Route, arg :: arg, args :: Array arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
-      -> Array (Cofree Array {url :: R.Route, arg :: arg, args :: Array arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
-      -> ReactElement
-    asElement {url, arg, args, route: route@(Route id_ _ cls), indexRoute} [] =
-      createElement cls props (addIndex [])
-      where
+      :: {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+      -> Array (Cofree Array {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      -> State (Array arg) ReactElement
+    asElement {url, arg, route: route@(Route id_ _ cls), indexRoute} [] = do
+      args <- get
+      let 
         props :: props arg
-        props = mkProps id_ arg args query
-
-        -- add index
-        addIndex :: Array ReactElement -> Array ReactElement
-        addIndex children = maybe children (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) children) indexRoute
-
-    asElement {url, arg, args, route, indexRoute} cofs =
-      case route of (Route id_ _ cls) ->
-        createElement cls (mkProps id_ arg args query) (createRouteElement <$> cofs)
+        props = mkProps id_ arg (A.snoc args arg) query
+        index :: Array ReactElement
+        index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
+      pure $ createElement cls props index
+    asElement {url, arg, route: (Route id_ _ cls), indexRoute} cofs = do
+      modify (flip A.snoc arg)
+      args <- get
+      children <- sequence $ createRouteElement <$> cofs
+      pure $ createElement cls (mkProps id_ arg args query) children
