@@ -29,7 +29,13 @@ import Routing.Types (Route) as R
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: List arg, query :: Map String String, tail :: List (Cofree List {url :: R.Route, arg :: arg})}
+newtype RouteProps arg = RouteProps
+  { id :: String
+  , arg :: arg
+  , args :: List arg
+  , query :: Map String String
+  , tail :: List (Cofree List {url :: R.Route, arg :: arg})
+  }
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -83,7 +89,9 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |     : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) settingsClass :+ Nil)
 -- |     : Nil
 -- | ```
-type Router props arg = (RoutePropsClass props arg) => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type Router props arg =
+    (RoutePropsClass props arg)
+  => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
 withoutIndex
   :: forall props arg
