@@ -69,17 +69,19 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 
 -- | Router
 -- | ```
+-- | router :: Router RouteProps Unit
 -- | router =
--- |     Route "home" "/" Home :+
--- |         [ Route "user" "user/:id" User :+
--- |             [ Route "email" "email" UserEmail :+ []
--- |             , Route "password" "password" UserPassword :+ []
--- |             ]
--- |         , Tuple (Route "books" "books" Books) (Just BooksIndex) :<
--- |             [ Route "book" ":id" Book :+ []
--- |             , Route "reader" "reader" BookReader :+ []
--- |             ]
--- |         ]
+-- |   Route "main" (unit <$ lit "") mainClass :+
+-- |     (Route "home" (unit <$ lit "home") homeClass :+ Nil)
+-- |     : (Tuple (Route "user" (unit <$ (lit "user" *> int)) userClass) (Just $ IndexRoute "user-index" userIndexClass) :<
+-- |         (Route "book" (unit <$ (lit "books" *> int)) bookClass :+
+-- |           (Route "pages" (unit <$ lit "pages") pagesClass :+
+-- |             (Route "page" (unit <$ int) pageClass :+ Nil)
+-- |             : Nil)
+-- |           : Nil)
+-- |         : Nil)
+-- |     : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) settingsClass :+ Nil)
+-- |     : Nil
 -- | ```
 type Router props arg = (RoutePropsClass props arg) => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
