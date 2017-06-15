@@ -4,24 +4,26 @@ Routing library for `React` in the spirit of
 [react-router](https://github.com/ReactTraining/react-router) v3.
 The router has type
 ```purescript
-type Router props args = (RoutePropsClass props) => Cofree Array (Tuple (Route props args) (Maybe (IndexRoute props args)))
+type Router props args = (RoutePropsClass props) => Cofree List (Tuple (Route props args) (Maybe (IndexRoute props args)))
 ```
 thus it is a cofree comonad for the `Array` functor.
 
 You can define router using `:+` (adds routes without index) and `:<` (the
 standard combinator for unfolding a cofree comonad) combinators:
 ```purescript
+router :: Router RouteProps Unit
 router =
-    Route "home" "/" Home :+
-        [ Route "user" "user/:id" User :+
-            [ Route "email" "email" UserEmail :+ []
-            , Route "password" "password" UserPassword :+ []
-            ]
-        , Tuple (Route "books" "books" Books) (Just BooksIndex) :<
-            [ Route "book" ":id" Book :+ []
-            , Route "reader" "reader" BookReader :+ []
-            ]
-        ]
+  Route "main" (unit <$ lit "") mainClass :+
+    (Route "home" (unit <$ lit "home") homeClass :+ Nil)
+    : (Tuple (Route "user" (unit <$ (lit "user" *> int)) userClass) (Just $ IndexRoute "user-index" userIndexClass) :<
+        (Route "book" (unit <$ (lit "books" *> int)) bookClass :+
+          (Route "pages" (unit <$ lit "pages") pagesClass :+
+            (Route "page" (unit <$ int) pageClass :+ Nil)
+            : Nil)
+          : Nil)
+        : Nil)
+    : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) settingsClass :+ Nil)
+    : Nil
 ```
 
 ## Applicative parser
