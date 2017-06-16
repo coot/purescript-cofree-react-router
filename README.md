@@ -1,5 +1,16 @@
 # Cofree React Router
 
+[![Maintainer: coot](https://img.shields.io/badge/maintainer-coot-lightgrey.svg)](http://github.com/coot) [![documentation](https://pursuit.purescript.org/packages/purescript-cofree-react-router/badge)](https://pursuit.purescript.org/packages/purescript-cofree-react-router)
+
+## Installation
+
+```
+bower i --save purescript-cofree-react-router
+npm i --save warning react react-dom
+```
+
+## Intro
+
 Routing library for `React` in the spirit of
 [react-router](https://github.com/ReactTraining/react-router) v3.
 The router has type
