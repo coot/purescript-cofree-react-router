@@ -1,6 +1,7 @@
 # Cofree React Router
 
-[![Maintainer: coot](https://img.shields.io/badge/maintainer-coot-lightgrey.svg)](http://github.com/coot) [![documentation](https://pursuit.purescript.org/packages/purescript-cofree-react-router/badge)](https://pursuit.purescript.org/packages/purescript-cofree-react-router)
+[![Maintainer: coot](https://img.shields.io/badge/maintainer-coot-lightgrey.svg)](http://github.com/coot)
+[![Documentation](https://pursuit.purescript.org/packages/purescript-cofree-react-router/badge)](https://pursuit.purescript.org/packages/purescript-cofree-react-router)
 [![Build Status](https://travis-ci.org/coot/purescript-cofree-react-router.svg?branch=master)](https://travis-ci.org/coot/purescript-cofree-react-router)
 
 ## Installation
