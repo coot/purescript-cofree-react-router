@@ -164,5 +164,5 @@ goTo cfg url = do
   w <- window
   h <- history w
   let url_ = joinUrls (fromMaybe "" (un RouterConfig cfg).baseName) url
-  pushState (toForeign "") (DocumentTitle url_) (URL url_) h
+  pushState (toForeign unit) (DocumentTitle url_) (URL url_) h
   void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w)
