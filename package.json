@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react-dom": "^15.4.2",
+    "warning": "^3.0.0"
   },
   "devDependencies": {
     "express": "^4.15.2",
@@ -17,13 +18,14 @@
     "karma-chrome-launcher": "^2.0.0",
     "karma-firefox-launcher": "^1.0.1",
     "karma-spec-reporter": "0.0.30",
+    "pulp": "^11.0.0",
     "rimraf": "^2.6.1"
   },
   "scripts": {
-    "postinstall": "bower install",
     "clean": "rimraf output && rimraf .pulp-cache",
+    "build": "pulp build",
     "pretest": "pulp browserify --main 'Test.Main' -I test --to karma/index.js",
-    "test": "pulp -w test",
+    "test": "pulp test",
     "example": "node utils/serve-example.js & pulp -w browserify --main 'Example.Main' -I example --to dist/index.js"
   },
   "repository": {

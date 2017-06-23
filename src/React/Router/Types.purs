@@ -1,18 +1,22 @@
 module React.Router.Types 
-  ( (:+)
+  ( RouterConfig(RouterConfig)
   , IndexRoute(IndexRoute)
   , Route(Route)
   , RouteClass
   , RouteProps(..)
   , Router
+  , defaultConfig
   , withoutIndex
+  , (:+)
   -- lenses
   , urlLens
   ) where
 
 import Prelude
+
 import Control.Comonad.Cofree ((:<), Cofree)
 import Data.Lens (Lens', lens)
+import Data.List (List)
 import Data.Map (Map)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
@@ -20,11 +24,18 @@ import Data.Tuple (Tuple(..))
 import React (ReactClass)
 import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
+import Routing.Types (Route) as R
 
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps { id :: String, arg :: arg, args :: Array arg, query :: Map String String }
+newtype RouteProps arg = RouteProps
+  { id :: String
+  , arg :: arg
+  , args :: List arg
+  , query :: Map String String
+  , tail :: List (Cofree List {url :: R.Route, arg :: arg})
+  }
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -37,7 +48,7 @@ idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (r
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
   idLens = idLens
-  mkProps name arg args query = RouteProps { id: name, arg, args, query }
+  mkProps name arg args query tail = RouteProps { id: name, arg, args, query, tail }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 
@@ -64,27 +75,38 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 
 -- | Router
 -- | ```
+-- | router :: Router RouteProps Unit
 -- | router =
--- |     Route "home" "/" Home :+
--- |         [ Route "user" "user/:id" User :+
--- |             [ Route "email" "email" UserEmail :+ []
--- |             , Route "password" "password" UserPassword :+ []
--- |             ]
--- |         , Tuple (Route "books" "books" Books) (Just BooksIndex) :<
--- |             [ Route "book" ":id" Book :+ []
--- |             , Route "reader" "reader" BookReader :+ []
--- |             ]
--- |         ]
+-- |   Route "main" (unit <$ lit "") mainClass :+
+-- |     (Route "home" (unit <$ lit "home") homeClass :+ Nil)
+-- |     : (Tuple (Route "user" (unit <$ (lit "user" *> int)) userClass) (Just $ IndexRoute "user-index" userIndexClass) :<
+-- |         (Route "book" (unit <$ (lit "books" *> int)) bookClass :+
+-- |           (Route "pages" (unit <$ lit "pages") pagesClass :+
+-- |             (Route "page" (unit <$ int) pageClass :+ Nil)
+-- |             : Nil)
+-- |           : Nil)
+-- |         : Nil)
+-- |     : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) settingsClass :+ Nil)
+-- |     : Nil
 -- | ```
-type Router props arg = (RoutePropsClass props arg) => Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type Router props arg =
+    (RoutePropsClass props arg)
+  => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 
 withoutIndex
   :: forall props arg
    . (RoutePropsClass props arg)
   => Route props arg
-  -> Array (Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
-  -> Cofree Array (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  -> List (Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
+  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
 withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route
-infixr 6 withoutIndex as :+
+infixr 5 withoutIndex as :+
+
+newtype RouterConfig = RouterConfig { baseName :: Maybe String }
+
+derive instance newtypeRouterConfig :: Newtype RouterConfig _
+
+defaultConfig :: RouterConfig
+defaultConfig = RouterConfig { baseName: Nothing }
