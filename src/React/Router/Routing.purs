@@ -29,6 +29,8 @@ import Routing.Match.Class (end, lit, params)
 import Routing.Types (Route, RoutePart(..)) as R
 import Unsafe.Coerce (unsafeCoerce)
 
+type LeafVal props arg = {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
 shake
@@ -67,14 +69,14 @@ matchRouter
    . (RoutePropsClass props arg)
   => R.Route
   -> Router props arg
-  -> Maybe (Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+  -> Maybe (Cofree List (LeafVal props arg))
 matchRouter url_ router = shake $ go url_ router
     where
     -- traverse Cofree and match routes
     go
       :: R.Route
       -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
-      -> Cofree List (Maybe {url :: R.Route, arg:: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      -> Cofree List (Maybe (LeafVal props arg))
     go url' r =
       case head r of
         Tuple route indexRoute ->
@@ -106,13 +108,13 @@ runRouter urlStr router =
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+      :: Cofree List (LeafVal props arg)
       -> State (List arg) ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
 
     asElement
-      :: {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
-      -> List (Cofree List {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)})
+      :: LeafVal props arg
+      -> List (Cofree List (LeafVal props arg))
       -> State (List arg) ReactElement
     asElement {arg, route: route@(Route id_ _ cls), indexRoute} Nil = do
       args <- get
