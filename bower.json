@@ -18,14 +18,14 @@
     "tests",
     "output"
   ],
-  "repository": {                                                          
-    "type": "git",                                                         
-    "url": "git://github.com/coot/purescript-cofree-react-router.git"            
-  }, 
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/coot/purescript-cofree-react-router.git"
+  },
   "dependencies": {
     "purescript-free": "^4.0.0",
     "purescript-prelude": "^3.0.0",
-    "purescript-react": "^3.0.0",
+    "purescript-react": "^4.0.0",
     "purescript-newtype": "^2.0.0",
     "purescript-profunctor-lenses": "^3.0.0",
     "purescript-const": "^3.0.0",
@@ -36,5 +36,8 @@
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
     "purescript-test-unit": "^11.0.0"
+  },
+  "resolutions": {
+    "purescript-react": "^4.0.0"
   }
 }
