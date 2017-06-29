@@ -5,8 +5,7 @@ import Prelude
 
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Monoid (mempty)
-import React.Router.Utils (URLPart(..), hasBaseName, joinUrls, showLocation, stripBaseName)
+import React.Router.Utils (hasBaseName, joinUrls, showLocation, stripBaseName)
 import Test.Unit (TestSuite, suite, test)
 import Test.Unit.Assert (assert)
 
@@ -44,14 +43,6 @@ testSuite = suite "Utils" do
     assert ("expected /b but got " <> r4) $ r4 == "/b"
     let r5 = joinUrls "/a" ""
     assert ("expected /a but got " <> r5) $ r5 == "/a"
-
-  test "URLParts" do
-    let URLPart r1 = URLPart "/" <> mempty
-        e1 = "/"
-    assert "" $ r1 == e1
-    let URLPart r2 = mempty <> URLPart "/"
-        e2 = "/"
-    assert "" $ r2 == e2
 
   test "showLocation" do
     let r1 = showLocation (Home : User 1 : Nil)
