@@ -29,7 +29,12 @@ import Routing.Match.Class (end, lit, params)
 import Routing.Types (Route, RoutePart(..)) as R
 import Unsafe.Coerce (unsafeCoerce)
 
-type LeafVal props arg = {url :: R.Route, arg :: arg, route :: Route props arg, indexRoute :: Maybe (IndexRoute props arg)}
+type LeafVal props arg =
+  { url :: R.Route
+  , arg :: arg
+  , route :: Route props arg
+  , indexRoute :: Maybe (IndexRoute props arg)
+  }
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
@@ -56,13 +61,14 @@ shake cof = case head cof of
       -> List (Cofree List {url :: R.Route, arg :: arg | a})
     go cofs = foldr f Nil cofs
       where 
-        f cof_ cofs_ = case head cof_ of
-                       Nothing -> cofs_
-                       Just cofHead ->
-                         let tail_ = go $ tail cof_
-                         in if not (null tail_) || matchEnd cofHead.url
-                              then (cofHead :< go (tail cof_)) : cofs_
-                              else cofs_
+        f cof_ cofs_ =
+          case head cof_ of
+            Nothing -> cofs_
+            Just cofHead ->
+              let tail_ = go $ tail cof_
+              in if not (null tail_) || matchEnd cofHead.url
+                then (cofHead :< go (tail cof_)) : cofs_
+                else cofs_
 
 matchRouter
   :: forall props arg
