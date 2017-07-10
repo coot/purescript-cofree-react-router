@@ -29,11 +29,11 @@ import Routing.Match.Class (end, lit, params)
 import Routing.Types (Route, RoutePart(..)) as R
 import Unsafe.Coerce (unsafeCoerce)
 
-type LeafVal props arg =
+type LeafVal props arg eff =
   { url :: R.Route
   , arg :: arg
-  , route :: Route props arg
-  , indexRoute :: Maybe (IndexRoute props arg)
+  , route :: Route props arg eff
+  , indexRoute :: Maybe (IndexRoute props arg eff)
   }
 
 -- | Remove all branches that are annotated with `Nothing`
@@ -71,18 +71,18 @@ shake cof = case head cof of
                 else cofs_
 
 matchRouter
-  :: forall props arg
-   . (RoutePropsClass props arg)
+  :: forall props arg eff
+   . (RoutePropsClass props arg eff)
   => R.Route
-  -> Router props arg
-  -> Maybe (Cofree List (LeafVal props arg))
+  -> Router props arg eff
+  -> Maybe (Cofree List (LeafVal props arg eff))
 matchRouter url_ router = shake $ go url_ router
     where
     -- traverse Cofree and match routes
     go
       :: R.Route
-      -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
-      -> Cofree List (Maybe (LeafVal props arg))
+      -> Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff)))
+      -> Cofree List (Maybe (LeafVal props arg eff))
     go url' r =
       case head r of
         Tuple route indexRoute ->
@@ -95,10 +95,10 @@ matchRouter url_ router = shake $ go url_ router
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
 -- | be injected into React vDOM.
 runRouter
-  :: forall props arg
-   . (RoutePropsClass props arg)
+  :: forall props arg eff
+   . (RoutePropsClass props arg eff)
   => String
-  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  -> Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff)))
   -> Maybe ReactElement
 runRouter urlStr router =
   evalState (sequence $ createRouteElement <$> matchRouter url_ router) Nil
@@ -114,19 +114,19 @@ runRouter urlStr router =
 
     -- traverse Cofree and produce ReactElement
     createRouteElement
-      :: Cofree List (LeafVal props arg)
+      :: Cofree List (LeafVal props arg eff)
       -> State (List arg) ReactElement
     createRouteElement cof = asElement (head cof) (tail cof)
 
     asElement
-      :: LeafVal props arg
-      -> List (Cofree List (LeafVal props arg))
+      :: LeafVal props arg eff
+      -> List (Cofree List (LeafVal props arg eff))
       -> State (List arg) ReactElement
     asElement {arg, route: route@(Route id_ _ cls), indexRoute} Nil = do
       args <- get
       let 
-        props :: props arg
-        props = mkProps id_ arg (arg : args) query Nil
+        props :: props arg eff
+        props = mkProps id_ arg (arg : args) query Nil (pure unit)
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
@@ -134,7 +134,7 @@ runRouter urlStr router =
       modify (arg : _)
       args <- get
       children <- sequence $ createRouteElement <$> cofs
-      pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) (toUnfoldable children)
+      pure $ createElement cls (mkProps id_ arg args query (coerce cofs) (pure unit)) (toUnfoldable children)
 
     coerce :: forall r. List (Cofree List {url :: R.Route, arg :: arg | r}) -> List (Cofree List {url :: R.Route, arg :: arg })
     coerce = unsafeCoerce

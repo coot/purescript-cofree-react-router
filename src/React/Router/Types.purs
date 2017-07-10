@@ -15,7 +15,8 @@ module React.Router.Types
 import Prelude
 
 import Control.Comonad.Cofree ((:<), Cofree)
-import Data.Lens (Lens', lens)
+import Control.Monad.Eff (Eff)
+import Data.Lens (Lens', Getter', lens, to)
 import Data.List (List)
 import Data.Map (Map)
 import Data.Maybe (Maybe(..))
@@ -29,13 +30,16 @@ import Routing.Types (Route) as R
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
-newtype RouteProps arg = RouteProps
+newtype RouteProps arg eff = RouteProps
   { id :: String
   , arg :: arg
   , args :: List arg
   , query :: Map String String
   , tail :: List (Cofree List {url :: R.Route, arg :: arg})
+  , onLeave :: Eff eff Unit
   }
+
+derive instance newtypeRouteProps :: Newtype (RouteProps arg eff) _
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -43,34 +47,36 @@ newtype RouteProps arg = RouteProps
 -- |      props <- getProps this
 -- |      let id = view idLens props
 -- | ```
-idLens :: forall arg. Lens' (RouteProps arg) String
+idLens :: forall arg e. Lens' (RouteProps arg e) String
 idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (rp { id = id_ }))
 
-instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
-  idLens = idLens
-  mkProps name arg args query tail = RouteProps { id: name, arg, args, query, tail }
+onLeaveGetter :: forall arg eff. Getter' (RouteProps arg eff) (Eff eff Unit)
+onLeaveGetter = to (\(RouteProps { onLeave }) -> onLeave)
 
-derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
+instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg eff where
+  onLeave = onLeaveGetter
+  idLens = idLens
+  mkProps name arg args query tail onLeave = RouteProps { id: name, arg, args, query, tail, onLeave }
 
 -- | React component which will be mounted at matching node
 -- | It recieves array of all matching routes.
-type RouteClass props arg = (RoutePropsClass props arg) => ReactClass (props arg)
+type RouteClass props arg eff = (RoutePropsClass props arg eff) => ReactClass (props arg eff)
 
 -- | Route type
 -- | The first parameter is an identifier.
-data Route props arg = Route String (R.Match arg) (RouteClass props arg)
+data Route props arg eff = Route String (R.Match arg) (RouteClass props arg eff)
 
 -- | IndexRoute type
 -- | The first parameter is the id property.
-data IndexRoute props arg = IndexRoute String (RouteClass props arg)
+data IndexRoute props arg eff = IndexRoute String (RouteClass props arg eff)
 
-instance showRoute :: Show (Route props arg) where
+instance showRoute :: Show (Route props arg eff) where
   show (Route id_ _ _) = "<Route \"" <> id_ <> "\">"
 
 urlLens
-  :: forall props arg
-   . (RoutePropsClass props arg)
-  => Lens' (Route props arg) (R.Match arg)
+  :: forall props arg eff
+   . (RoutePropsClass props arg eff)
+  => Lens' (Route props arg eff) (R.Match arg)
 urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
 
 -- | Router
@@ -89,16 +95,16 @@ urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url 
 -- |     : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) settingsClass :+ Nil)
 -- |     : Nil
 -- | ```
-type Router props arg =
-    (RoutePropsClass props arg)
-  => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type Router props arg eff =
+    (RoutePropsClass props arg eff)
+  => Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff)))
 
 withoutIndex
-  :: forall props arg
-   . (RoutePropsClass props arg)
-  => Route props arg
-  -> List (Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
-  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  :: forall props arg eff
+   . (RoutePropsClass props arg eff)
+  => Route props arg eff
+  -> List (Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff))))
+  -> Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff)))
 withoutIndex r rs = Tuple r Nothing :< rs
 
 -- | `:+` lets define routes without index route

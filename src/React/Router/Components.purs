@@ -45,8 +45,8 @@ type RouterState =
   }
 
 -- | RouterProps type
-type RouterProps props arg notFoundProps =
-  { router :: Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+type RouterProps props arg eff notFoundProps =
+  { router :: Cofree List (Tuple (Route props arg eff) (Maybe (IndexRoute props arg eff)))
   , notFound :: Maybe
     { cls :: ReactClass notFoundProps
     , props :: notFoundProps
@@ -75,10 +75,10 @@ getLocation cfg = do
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
 -- | class for the router.
 browserRouter
-  :: forall eff props arg notfound
-   . (RoutePropsClass props arg)
+  :: forall e eff props arg notfound
+   . (RoutePropsClass props arg e)
   => RouterConfig
-  -> ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
+  -> ReactSpec (RouterProps props arg e notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
 browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = do
@@ -115,10 +115,10 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
 -- |        pure $ unsafePartial fromJust (toMaybe elm_)
 -- |  ```
 browserRouterClass
-  :: forall props arg notfound
-   . (RoutePropsClass props arg)
+  :: forall props arg eff notfound
+   . (RoutePropsClass props arg eff)
   => RouterConfig
-  -> ReactClass (RouterProps props arg notfound)
+  -> ReactClass (RouterProps props arg eff notfound)
 browserRouterClass cfg = createClass (browserRouter cfg)
 
 type LinkProps = {to :: String, props :: Array Props}
