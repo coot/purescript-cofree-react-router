@@ -13,6 +13,7 @@ import Control.Comonad.Cofree (Cofree)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, error)
 import Control.Monad.Eff.Exception (EXCEPTION, catchException)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import DOM (DOM)
 import DOM.Event.EventTarget (addEventListener, dispatchEvent, eventListener)
 import DOM.Event.Types (Event)
@@ -161,7 +162,6 @@ goTo
   -> String
   -> Eff ( console :: CONSOLE
          , dom :: DOM
-         , err :: EXCEPTION
          , history :: HISTORY
          | eff
          ) Unit
@@ -172,4 +172,7 @@ goTo cfg url = catchException
     h <- history w
     let url_ = joinUrls (fromMaybe "" (un RouterConfig cfg).baseName) url
     pushState (toForeign unit) (DocumentTitle url_) (URL url_) h
-    void $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w))
+    void $ coerceEff $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w))
+  where
+    coerceEff :: forall e a. Eff (err :: EXCEPTION | e) a -> Eff (exception :: EXCEPTION | e) a
+    coerceEff = unsafeCoerceEff
