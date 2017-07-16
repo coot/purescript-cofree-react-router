@@ -24,17 +24,17 @@ import Test.Unit (TestSuite, failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
 
-routeClass :: forall args. RouteClass RouteProps args
+routeClass :: forall args e. RouteClass RouteProps args e
 routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
 
-routeClass2 :: forall args. RouteClass RouteProps args
+routeClass2 :: forall args e. RouteClass RouteProps args e
 routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
                     pure $ div [_id (view idLens props)] children)
 
-indexRouteClass :: forall args. RouteClass RouteProps args
+indexRouteClass :: forall args e. RouteClass RouteProps args e
 indexRouteClass = 
     let clsSpec = (spec 0) $
         (\this -> do
@@ -44,8 +44,8 @@ indexRouteClass =
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
 idTree
-  :: forall args r
-   . Cofree List {url :: R.Route, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r}
+  :: forall props arg r e
+   . Cofree List {url :: R.Route, route :: Route props arg e, indexRoute :: Maybe (IndexRoute props arg e) | r}
   -> Cofree List {id :: String, indexId :: Maybe String}
 idTree = map (\{url, route: (Route id_ _ _), indexRoute} -> {id: id_, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
@@ -139,7 +139,7 @@ testSuite =
     suite "Router" do
         suite "runRouter"
             let
-                router :: Router RouteProps Unit
+                router :: Router RouteProps Unit eff
                 router =
                   Route "main" (unit <$ lit "") routeClass :+
                     (Route "home" (unit <$ lit "home") routeClass :+ Nil)
@@ -153,7 +153,7 @@ testSuite =
                     : (Route "user-settings" (unit <$ (lit "user" *> int *> lit "settings")) routeClass :+ Nil)
                     : Nil
 
-                router2 :: Router RouteProps Unit
+                router2 :: Router RouteProps Unit eff
                 router2 =
                   Route "main" (unit <$ lit "") routeClass2 :+
                     (Route "home" (unit <$ lit "home") routeClass2 :+
@@ -162,7 +162,7 @@ testSuite =
                     : (Route "user-settings" (unit <$ (lit "home" *> lit "user" *> lit "settings")) routeClass :+ Nil)
                     : Nil
 
-                router3 :: Router RouteProps Unit
+                router3 :: Router RouteProps Unit eff
                 router3 = 
                   (Route "main" (unit <$ lit "") routeClass2) :+
                     (Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
@@ -171,7 +171,7 @@ testSuite =
                       : Nil)
                   : Nil
 
-                router4 :: Router RouteProps Locations
+                router4 :: Router RouteProps Locations eff
                 router4 =
                   Route "main" (Ignore <$ lit "") routeClass
                   :+
@@ -198,7 +198,7 @@ testSuite =
                             eqCofreeS chTree expected
 
                 checkTree
-                  :: Router RouteProps Unit
+                  :: Router RouteProps Unit eff
                   -> String
                   -> Cofree List { id :: String, indexId :: Maybe String }
                   -> Aff eff Unit
