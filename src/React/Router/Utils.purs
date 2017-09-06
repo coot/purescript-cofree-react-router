@@ -2,13 +2,19 @@ module React.Router.Utils where
 
 import Prelude
 
+import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Foldable (class Foldable, foldl)
+import Data.Foldable (class Foldable, foldl, foldMap)
 import Data.List as L
+import Data.List (List)
 import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe.First (First(First))
+import Data.Newtype (un)
 import Data.String as S
+import Data.Tuple (Tuple(Tuple))
 import Routing.Types (Route, RoutePart(..)) as R
+import React.Router.Types (RouteProps(RouteProps))
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
 routeToString :: R.Route -> String
@@ -44,3 +50,13 @@ joinUrls a b | S.null a = b
 
 showLocation :: forall a t. Show a => Foldable t => t a -> String
 showLocation t = foldl (\url -> joinUrls url <<< show) "" t
+
+findLocation
+  :: forall arg a
+   . ({ arg :: arg, url :: R.Route } -> Maybe a)
+  -> List (Cofree List { arg :: arg, url :: R.Route })
+  -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route})))
+findLocation fn = un First <<< foldMap go
+  where
+    go :: Cofree List { arg :: arg, url :: R.Route } -> First (Tuple a (List (Cofree List { arg :: arg, url :: R.Route })))
+    go w = First $ (\a -> Tuple a (tail w)) <$> (fn (head w))
