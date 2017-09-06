@@ -30,10 +30,17 @@ import Routing.Types (Route) as R
 -- | argument and array of arguments - if the route is nested this will hold
 -- | list of all parent arguments.
 newtype RouteProps arg = RouteProps
+  -- | id of the route
   { id :: String
+  -- | argument of the last matched url part
   , arg :: arg
+  -- | list of all matched url parts (its head is `arg`)
   , args :: List arg
+  -- | query map
   , query :: Map String String
+  -- | tail of the route params, this complements the information from `args`.
+  -- | It has the information about all mounted children.  You can use
+  -- | `React.Router.Utils.findLocation` to query it.
   , tail :: List (Cofree List {url :: R.Route, arg :: arg})
   }
 

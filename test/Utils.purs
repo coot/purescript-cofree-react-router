@@ -3,10 +3,13 @@ module Test.Utils
 
 import Prelude
 
+import Control.Comonad.Cofree ((:<))
+import Data.Either (Either(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Just, Nothing))
-import React.Router.Utils (hasBaseName, joinUrls, showLocation, stripBaseName)
-import Test.Unit (TestSuite, suite, test)
+import Data.Tuple (Tuple(..))
+import React.Router.Utils (findLocation, hasBaseName, joinUrls, showLocation, stripBaseName, (:<<<), (:>>>))
+import Test.Unit (TestSuite, failure, suite, test)
 import Test.Unit.Assert (assert)
 
 data Location = Home | User Int | Settings
@@ -54,3 +57,23 @@ testSuite = suite "Utils" do
     let r3 = showLocation [Home, Settings, User 1]
         e3 = "/home/settings/user/1"
     assert ("expected " <> e3 <> " but got " <> r3) $ r3 == e3
+
+  test "findLocation & composeFL" do
+    let ws =
+          ({ arg: Left "left", url: Nil } :<
+            (({ arg: Right "right", url: Nil } :< Nil)
+            : Nil))
+          : Nil
+        _left { arg: Left x } = Just x
+        _left { arg: Right _ } = Nothing
+
+        _right { arg: Left _ } = Nothing
+        _right { arg: Right x } = Just x
+
+    case (findLocation _right :<<< findLocation _left) ws of
+      Just (Tuple (Tuple "left" (Just "right")) _) -> pure unit
+      _ -> failure "failed to pattern match"
+
+    case (findLocation _right :>>> findLocation _left) ws of
+      Nothing -> pure unit
+      Just _  -> failure "should not match"

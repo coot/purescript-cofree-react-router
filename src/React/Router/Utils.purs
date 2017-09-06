@@ -1,4 +1,16 @@
-module React.Router.Utils where
+module React.Router.Utils 
+  ( showLocation
+  , findLocation
+  , composeFL
+  , (:>>>)
+  , composeFLFlipped
+  , (:<<<)
+  , stripBaseName
+  , hasBaseName
+  , joinUrls
+  , routeToString
+  , warning
+  ) where
 
 import Prelude
 
@@ -6,15 +18,15 @@ import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Data.Foldable (class Foldable, foldl, foldMap)
-import Data.List as L
 import Data.List (List)
-import Data.Maybe (Maybe(..), isJust)
+import Data.List as L
+import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Maybe.First (First(First))
+import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (un)
 import Data.String as S
-import Data.Tuple (Tuple(Tuple))
+import Data.Tuple (Tuple(Tuple), fst, snd)
 import Routing.Types (Route, RoutePart(..)) as R
-import React.Router.Types (RouteProps(RouteProps))
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
 routeToString :: R.Route -> String
@@ -36,6 +48,7 @@ stripBaseName :: Maybe String -> String -> String
 stripBaseName Nothing s = s
 stripBaseName (Just b) s = S.drop (S.length b) s
 
+-- | Join two url strings putting `/` separator in between if necessary.
 joinUrls :: String -> String -> String
 joinUrls a b | S.null a = b
              | S.null b = a
@@ -48,9 +61,15 @@ joinUrls a b | S.null a = b
             else b
   in _a <> "/" <> _b
 
+-- | Fold over list of locations and join them as urls.
+-- | ``` purescript
+-- | showLocation (Home : User 1 : Settings) -- /user/1/settings
+-- | ```
 showLocation :: forall a t. Show a => Foldable t => t a -> String
 showLocation t = foldl (\url -> joinUrls url <<< show) "" t
 
+-- | Find location inside a tail of `Cofree List`.  This is useful for
+-- | querying about children that are mounted under a given component.
 findLocation
   :: forall arg a
    . ({ arg :: arg, url :: R.Route } -> Maybe a)
@@ -60,3 +79,53 @@ findLocation fn = un First <<< foldMap go
   where
     go :: Cofree List { arg :: arg, url :: R.Route } -> First (Tuple a (List (Cofree List { arg :: arg, url :: R.Route })))
     go w = First $ (\a -> Tuple a (tail w)) <$> (fn (head w))
+
+-- | Compose two `findLocation _` functions.  Note that this composition runs
+-- | from left to right (unlike function composition), i.e. the left argument is
+-- | applied first and then the right argument is applied to the tail returned by the
+-- | first one.  For example
+-- | ```
+-- | data A = A
+-- | data B = B
+-- | data C = C
+-- | type Arg = { arg :: Location, url :: Route}
+-- |
+-- | fn :: Arg -> Maybe A
+-- | fn _ = Just A
+-- |
+-- | gn :: Arg -> Maybe B
+-- | gn _ = Just B
+-- |
+-- | hn :: Arg -> Maybe C
+-- | hn _ = Just C
+-- |
+-- | (findLocation fn) :>>> (findLocation gn)
+-- |  :: Arg
+-- |  -> Maybe (Tuple (Tuple A (Maybe B)) (List (Cofree List Arg)))
+-- |
+-- | (findLocation fn) :>>> (findLocation gn) :>>> (findLocation hn)
+-- |   :: Arg
+-- |   -> Maybe (Tuple (Tuple A (Maybe (Tuple B (Maybe C)))) (List (Cofree List Arg)))
+-- | ```
+composeFL
+  :: forall arg a b
+   . (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route}))))
+  -> (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple b (List (Cofree List { arg :: arg, url :: R.Route}))))
+  -> List (Cofree List { arg :: arg, url :: R.Route })
+  -> Maybe (Tuple (Tuple a (Maybe b)) (List (Cofree List { arg :: arg, url :: R.Route })))
+composeFL f g ws = shuffle <$> ((map g) <$> f ws)
+  where
+    shuffle :: forall x y z. Monoid z => Tuple x (Maybe (Tuple y z)) -> Tuple (Tuple x (Maybe y)) z
+    shuffle (Tuple x my) = Tuple (Tuple x (fst <$> my)) (maybe mempty snd my)
+
+infixr 7 composeFL as :>>>
+
+composeFLFlipped
+  :: forall arg a b
+   . (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route}))))
+  -> (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple b (List (Cofree List { arg :: arg, url :: R.Route}))))
+  -> List (Cofree List { arg :: arg, url :: R.Route })
+  -> Maybe (Tuple (Tuple b (Maybe a)) (List (Cofree List { arg :: arg, url :: R.Route })))
+composeFLFlipped = flip composeFL
+
+infixr 7 composeFLFlipped as :<<<
