@@ -10,6 +10,8 @@ module React.Router.Utils
   , joinUrls
   , routeToString
   , warning
+  , mountedLocations
+  , mountedLocationsRelative
   ) where
 
 import Prelude
@@ -17,8 +19,8 @@ import Prelude
 import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Foldable (class Foldable, foldl, foldMap)
-import Data.List (List)
+import Data.Foldable (class Foldable, foldMap, foldl, foldr)
+import Data.List (List(..), concatMap, (:))
 import Data.List as L
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Maybe.First (First(First))
@@ -26,6 +28,7 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (un)
 import Data.String as S
 import Data.Tuple (Tuple(Tuple), fst, snd)
+import React.Router.Types (RouteProps(..))
 import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
@@ -129,3 +132,26 @@ composeFLFlipped
 composeFLFlipped = flip composeFL
 
 infixr 7 composeFLFlipped as :<<<
+
+-- | Take tail of the `RouteProps` and list all mounted locations relative.
+-- | The resulting routes are relative to the current path.
+-- |
+-- | Note that the current path (i.e. `RouteProps { args }`) is not included.
+mountedLocationsRelative
+  :: forall arg
+   . RouteProps arg
+  -> List (List arg)
+mountedLocationsRelative (RouteProps { tail: ws }) = concatMap (foldr fn (Nil : Nil)) ws
+  where
+    fn :: { arg :: arg, url :: R.Route } -> List (List arg) -> List (List arg)
+    fn { arg } l = (arg : _) `map` l
+
+-- | Like `mountedLocationsRelative` but the list full paths instead of
+-- | relative ones.
+-- |
+-- | Note that the current path (i.e. `RouteProps { args }`) is not included.
+mountedLocations
+  :: forall arg
+   . RouteProps arg
+  -> List (List arg)
+mountedLocations r@RouteProps { args } = (args <> _) `map` mountedLocationsRelative r
