@@ -1,5 +1,7 @@
 module React.Router.Utils 
   ( showLocation
+  , mountedLocations
+  , mountedLocationsRelative
   , findLocation
   , composeFL
   , (:>>>)
@@ -10,8 +12,6 @@ module React.Router.Utils
   , joinUrls
   , routeToString
   , warning
-  , mountedLocations
-  , mountedLocationsRelative
   ) where
 
 import Prelude
