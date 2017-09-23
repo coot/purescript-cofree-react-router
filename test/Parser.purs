@@ -2,17 +2,18 @@ module Test.Parser
   ( testSuite ) where
 
 import Prelude
-import Data.List as L
-import Data.Map as M
+
 import Data.Foldable (foldMap)
 import Data.List (List(..), zip, (:))
+import Data.List as L
+import Data.Map as M
 import Data.Maybe (Maybe(Nothing, Just))
 import Data.Monoid (mempty)
 import Data.Monoid.Disj (Disj(..))
 import Data.Newtype (ala)
 import Data.Traversable (sequence_)
 import Data.Tuple (Tuple(..))
-import React.Router.Parser (parse)
+import Routing.Parser (parse)
 import Routing.Types (RoutePart(..))
 import Test.Unit (TestSuite, suite, test)
 import Test.Unit.Assert (assert)

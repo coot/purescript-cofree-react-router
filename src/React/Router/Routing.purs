@@ -22,10 +22,10 @@ import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
 import React (ReactElement, createElement)
 import React.Router.Class (class RoutePropsClass, mkProps, idLens)
-import React.Router.Parser (parse)
 import React.Router.Types (IndexRoute(..), Route(..), Router, urlLens)
 import Routing.Match (Match(..))
 import Routing.Match.Class (end, lit, params)
+import Routing.Parser (parse)
 import Routing.Types (Route, RoutePart(..)) as R
 import Unsafe.Coerce (unsafeCoerce)
 

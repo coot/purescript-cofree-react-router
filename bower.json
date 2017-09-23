@@ -31,11 +31,11 @@
     "purescript-const": "^3.0.0",
     "purescript-maps": "^3.0.0",
     "purescript-react-dom": "^4.0.0",
-    "purescript-routing": "^5.1.0"
+    "purescript-routing": "^6.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
-    "purescript-test-unit": "^11.0.0"
+    "purescript-test-unit": "^13.0.0"
   },
   "resolutions": {
     "purescript-react": "^4.0.0"
