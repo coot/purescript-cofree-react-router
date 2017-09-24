@@ -1,11 +1,11 @@
 module React.Router.Components
   ( browserRouter
   , browserRouterClass
+  , LinkProps(LinkProps)
   , linkSpec
   , link
   , link'
-  , to
-  , goTo
+  , goto
   ) where
 
 
@@ -25,11 +25,11 @@ import DOM.HTML.Types (HISTORY, windowToEventTarget)
 import DOM.HTML.Window (history, location)
 import Data.Foreign (toForeign)
 import Data.List (List)
-import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe')
+import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
 import Prelude (Unit, bind, const, discard, pure, show, unit, void, ($), (<<<), (<>), (>>=), (||))
-import React (ReactClass, ReactElement, ReactSpec, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
+import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
@@ -40,7 +40,7 @@ import React.Router.Utils (hasBaseName, joinUrls, stripBaseName, warning)
 -- | RouterState type
 type RouterState =
   { hash :: String
-  , pathname :: String
+  , pathname :: URL
   , search :: String
   }
 
@@ -53,12 +53,12 @@ type RouterProps props arg notFoundProps =
     }
   }
 
-foreign import createPopStateEvent :: String -> Event
+foreign import createPopStateEvent :: URL -> Event
 
 getLocation
   :: forall e
    . RouterConfig
-  -> Eff (dom :: DOM, console :: CONSOLE | e) { hash :: String, pathname :: String, search :: String }
+  -> Eff (dom :: DOM, console :: CONSOLE | e) { hash :: String, pathname :: URL, search :: String }
 getLocation cfg = do
   l <- window >>= location
   h <- hash l
@@ -66,10 +66,10 @@ getLocation cfg = do
   s <- search l
   let cfgR = un RouterConfig cfg
   warning
-    (isNothing cfgR.baseName || (hasBaseName cfgR.baseName p))
+    (isNothing cfgR.baseName || (hasBaseName cfgR.baseName (URL p)))
     ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
-     <> p <> """ to begin with: """ <> (fromMaybe "" cfgR.baseName))
-  pure { hash: h, pathname: stripBaseName cfgR.baseName p, search: s }
+     <> p <> """ to begin with: """ <> (maybe "" (un URL) cfgR.baseName))
+  pure { hash: h, pathname: stripBaseName cfgR.baseName (URL p), search: s }
 
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
@@ -90,7 +90,7 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     render this = do
       props <- getProps this
       state <- readState this
-      let loc = state.pathname <> state.search <> state.hash
+      let loc = un URL state.pathname <> state.search <> state.hash
 
       case runRouter loc props.router of
         Nothing -> do
@@ -121,57 +121,60 @@ browserRouterClass
   -> ReactClass (RouterProps props arg notfound)
 browserRouterClass cfg = createClass (browserRouter cfg)
 
-type LinkProps = {to :: String, props :: Array Props}
-
-to :: String -> LinkProps
-to = { to: _, props: [] }
+newtype LinkProps eff = LinkProps
+  { url :: URL
+  , props :: Array Props
+  , action :: Eff (props :: ReactProps, refs :: ReactRefs ReadOnly, state :: ReactState ReadWrite | eff) Unit
+  }
 
 -- | `ReactSpec` for the `link` element; it takes a record of type `LinkProps`
 -- | as properties.  The `props` record property is directly passed to underlying
 -- | `a` element, e.g. this can be used to add css classes.
-linkSpec :: RouterConfig -> ReactSpec LinkProps Unit ()
-linkSpec cfg = (spec unit render) { displayName = "Link" }
+linkSpec :: forall eff. ReactSpec (LinkProps eff) Unit ()
+linkSpec = (spec unit render) { displayName = "Link" }
   where
     render this = do
-      p <- getProps this
+      LinkProps p <- getProps this
       chrn <- getChildren this
       pure $ a
-        ([href p.to, (onClick $ clickHandler this)] <> p.props)
+        ([href (un URL p.url), (onClick $ clickHandler this)] <> p.props)
         chrn
 
     clickHandler this ev = do
       _ <- preventDefault ev
-      { to: url } <-  getProps this
-      goTo cfg url
+      LinkProps { action } <- getProps this
+      action
 
 -- | React class for the `link` element.
-linkClass :: RouterConfig -> ReactClass LinkProps
-linkClass = createClass <<< linkSpec
+linkClass :: forall eff. ReactClass (LinkProps eff)
+linkClass = createClass linkSpec
 
--- | `link` element; use it instead of `a` to route the user through application.
-link :: RouterConfig -> LinkProps -> Array ReactElement -> ReactElement
-link cfg = createElement (linkClass cfg)
+-- | `link` element; use it instead of `a` to route the user through
+-- | application with the default action `goto cfg url` and custom properties.
+link :: RouterConfig -> URL -> Array Props -> Array ReactElement -> ReactElement
+link cfg url props = createElement linkClass (LinkProps { url, props, action: goto cfg url})
 
--- | as `link`, but with empty properties passed to the underlying `a` element.
-link' :: RouterConfig -> String -> Array ReactElement -> ReactElement
-link' cfg = link cfg <<< {to: _, props: []}
+-- | as `link`, but with empty props.
+link' :: RouterConfig -> URL -> Array ReactElement -> ReactElement
+link' cfg url = link cfg url []
 
-goTo
+-- | goto url
+goto
   :: forall eff
    . RouterConfig
-  -> String
+  -> URL
   -> Eff ( console :: CONSOLE
          , dom :: DOM
          , history :: HISTORY
          | eff
          ) Unit
-goTo cfg url = catchException
+goto cfg url = catchException
   (error <<< show)
   (do
     w <- window
     h <- history w
-    let url_ = joinUrls (fromMaybe "" (un RouterConfig cfg).baseName) url
-    pushState (toForeign unit) (DocumentTitle url_) (URL url_) h
+    let url_ = joinUrls (fromMaybe (URL "") (un RouterConfig cfg).baseName) url
+    pushState (toForeign unit) (DocumentTitle (un URL url_)) url_ h
     void $ coerceEff $ dispatchEvent (createPopStateEvent url) (windowToEventTarget w))
   where
     coerceEff :: forall e a. Eff (err :: EXCEPTION | e) a -> Eff (exception :: EXCEPTION | e) a

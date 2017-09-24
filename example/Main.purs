@@ -6,6 +6,7 @@ import Control.Comonad.Cofree ((:<))
 import Control.Monad.Eff (Eff)
 import DOM (DOM)
 import DOM.HTML (window)
+import DOM.HTML.History (URL(..))
 import DOM.HTML.Types (htmlDocumentToDocument)
 import DOM.HTML.Window (document)
 import DOM.Node.NonElementParentNode (getElementById)
@@ -18,6 +19,7 @@ import Partial.Unsafe (unsafePartial)
 import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
 import React.Router (IndexRoute(..), Route(..), RouteProps(..), Router, browserRouterClass, defaultConfig, link', (:+))
+import React.Router.Utils (showLocation)
 import ReactDOM (render)
 import Routing.Match.Class (int, lit, str)
 
@@ -37,7 +39,7 @@ home = createClass $ (spec unit render) { displayName = "Home" }
     render this = do
       chrn <- getChildren this
       pure $ div'
-        [ h1' [ link' defaultConfig (show Home) [text "Home component"] ] 
+        [ h1' [ link' defaultConfig (showLocation (Home : Nil)) [text "Home component"] ] 
         , div' chrn
         ]
 
@@ -47,9 +49,9 @@ usersIndex = createClass $ (spec unit render) { displayName = "UsersIndex" }
     render this = do
       pure $ div'
         [ h2' [ text "UserIndex component" ]
-        , div' [ div' [link' defaultConfig "/1" [ text "User 1" ]]
-               , div' [link' defaultConfig "/2" [ text "User 2" ]]
-               , div' [link' defaultConfig "/3" [ text "User 3" ]]
+        , div' [ div' [link' defaultConfig (URL "/1") [ text "User 1" ]]
+               , div' [link' defaultConfig (URL "/2") [ text "User 2" ]]
+               , div' [link' defaultConfig (URL "/3") [ text "User 3" ]]
                ]
         ]
 
@@ -80,11 +82,11 @@ userBooksIndex = createClass $ (spec unit render) { displayName = "UserBooksInde
               _ -> 0
       chrn <- getChildren this
       pure $ div'
-        [ h3' [ link' defaultConfig ("/" <> show uID) [ text "UserBooksIndex component" ] ]
+        [ h3' [ link' defaultConfig (URL $ "/" <> show uID) [ text "UserBooksIndex component" ] ]
         , div'
-          [ div' [ link' defaultConfig ("/" <> show uID <> "/book/fp-programming") [ text "Functional Programming" ] ]
-          , div' [ link' defaultConfig ("/" <> show uID <> "/book/grothendieck-galois-theory") [ text "Grothendick Galois Theory" ] ]
-          , div' [ link' defaultConfig ("/" <> show uID <> "/book/category-theory") [ text "Category Theory for the Working Mathematician" ]]
+          [ div' [ link' defaultConfig (URL $ "/" <> show uID <> "/book/fp-programming") [ text "Functional Programming" ] ]
+          , div' [ link' defaultConfig (URL $ "/" <> show uID <> "/book/grothendieck-galois-theory") [ text "Grothendick Galois Theory" ] ]
+          , div' [ link' defaultConfig (URL $ "/" <> show uID <> "/book/category-theory") [ text "Category Theory for the Working Mathematician" ]]
           ]
         , div' chrn
         ]

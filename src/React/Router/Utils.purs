@@ -19,6 +19,7 @@ import Prelude
 import Control.Comonad.Cofree (Cofree, head, tail)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
+import DOM.HTML.History (URL(..))
 import Data.Foldable (class Foldable, foldMap, foldl, foldr)
 import Data.List (List(..), concatMap, (:))
 import Data.List as L
@@ -40,21 +41,21 @@ routeToString url = L.intercalate "/" $ unwrap <$> url
 
 foreign import warning :: forall e. Boolean -> String -> Eff (console :: CONSOLE | e) Unit
 
-hasBaseName :: Maybe String -> String -> Boolean
+hasBaseName :: Maybe URL -> URL -> Boolean
 hasBaseName Nothing _ = true
-hasBaseName (Just b) s = isJust (S.stripPrefix (S.Pattern b) s) && (S.null rest || next == "/" || next == "#" || next == "?")
+hasBaseName (Just (URL b)) (URL s) = isJust (S.stripPrefix (S.Pattern b) s) && (S.null rest || next == "/" || next == "#" || next == "?")
   where
     rest = S.drop (S.length b) s
     next = S.take 1 rest
 
-stripBaseName :: Maybe String -> String -> String
+stripBaseName :: Maybe URL -> URL -> URL
 stripBaseName Nothing s = s
-stripBaseName (Just b) s = S.drop (S.length b) s
+stripBaseName (Just (URL b)) (URL s) = URL $ S.drop (S.length b) s
 
 -- | Join two url strings putting `/` separator in between if necessary.
-joinUrls :: String -> String -> String
-joinUrls a b | S.null a = b
-             | S.null b = a
+joinUrls :: URL -> URL -> URL
+joinUrls (URL a) (URL b) | S.null a = URL b
+             | S.null b = URL a
              | otherwise =
   let _a = if S.charAt (S.length a - 1) a == Just '/'
             then S.take (S.length a - 1) a
@@ -62,14 +63,14 @@ joinUrls a b | S.null a = b
       _b = if S.charAt 0 b == Just '/'
             then S.drop 1 b
             else b
-  in _a <> "/" <> _b
+  in URL $ _a <> "/" <> _b
 
 -- | Fold over list of locations and join them as urls.
 -- | ``` purescript
 -- | showLocation (Home : User 1 : Settings) -- /user/1/settings
 -- | ```
-showLocation :: forall a t. Show a => Foldable t => t a -> String
-showLocation t = foldl (\url -> joinUrls url <<< show) "" t
+showLocation :: forall a t. Show a => Foldable t => t a -> URL
+showLocation t = foldl (\url -> joinUrls url <<< URL <<< show) (URL "") t
 
 -- | Find location inside a tail of `Cofree List`.  This is useful for
 -- | querying about children that are mounted under a given component.

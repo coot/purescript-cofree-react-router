@@ -4,9 +4,11 @@ module Test.Utils
 import Prelude
 
 import Control.Comonad.Cofree ((:<))
+import DOM.HTML.History (URL(..))
 import Data.Either (Either(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Just, Nothing))
+import Data.Newtype (un)
 import Data.Tuple (Tuple(..))
 import React.Router.Utils (findLocation, hasBaseName, joinUrls, showLocation, stripBaseName, (:<<<), (:>>>))
 import Test.Unit (TestSuite, failure, suite, test)
@@ -23,38 +25,38 @@ testSuite :: forall eff. TestSuite eff
 testSuite = suite "Utils" do
 
   test "hasBaseName" do
-    assert "should return true when basename is Nothing" $ hasBaseName Nothing "/home"
-    assert "expected /prefix to have basename (Just /prefix)" $ hasBaseName (Just "/prefix") "/prefix"
-    assert "expected /prefix/ to have basename (Just /prefix)" $ hasBaseName (Just "/prefix") "/prefix/"
-    assert "expected /prefix? to have basename (Just /prefix)" $ hasBaseName (Just "/prefix") "/prefix?"
-    assert "expected /prefix# to have basename (Just /prefix)" $ hasBaseName (Just "/prefix") "/prefix#"
-    assert "expected /prefixx to not have basename (Just /prefix)" $ not $ hasBaseName (Just "/prefix") "/prefixx"
-    assert "expected /home to not have basename (Just /prefix)" $ not $ hasBaseName (Just "/prefix") "/home"
+    assert "should return true when basename is Nothing" $ hasBaseName Nothing $ URL "/home"
+    assert "expected /prefix to have basename (Just /prefix)" $ hasBaseName (Just $ URL "/prefix") $ URL "/prefix"
+    assert "expected /prefix/ to have basename (Just /prefix)" $ hasBaseName (Just $ URL "/prefix") $ URL "/prefix/"
+    assert "expected /prefix? to have basename (Just /prefix)" $ hasBaseName (Just $ URL "/prefix") $ URL "/prefix?"
+    assert "expected /prefix# to have basename (Just /prefix)" $ hasBaseName (Just $ URL "/prefix") $ URL "/prefix#"
+    assert "expected /prefixx to not have basename (Just /prefix)" $ not $ hasBaseName (Just $ URL "/prefix") $ URL "/prefixx"
+    assert "expected /home to not have basename (Just /prefix)" $ not $ hasBaseName (Just $ URL "/prefix") $ URL "/home"
 
   test "stripBaseName" do
-    let s = stripBaseName (Just "/home") "/home/url"
-    assert ("expected /home/url to be /url but got: " <> s) $ s == "/url"
+    let s = stripBaseName (Just $ URL "/home") $ URL "/home/url"
+    assert ("expected /home/url to be /url but got: " <> un URL s) $ un URL s == "/url"
 
   test "joinUrls" do
-    let r1 = joinUrls "/a" "/b"
+    let r1 = un URL $ joinUrls (URL "/a") (URL "/b")
     assert ("expected /a/b but got " <> r1) $ r1 == "/a/b"
-    let r2 = joinUrls "/a/" "/b"
+    let r2 = un URL $ joinUrls (URL "/a/") (URL "/b")
     assert ("expected /a/b but got " <> r2) $ r2 == "/a/b"
-    let r3 = joinUrls "/a/" "b" 
+    let r3 = un URL $ joinUrls (URL "/a/") (URL "b")
     assert ("expected /a/b but got " <> r3) $ r3 == "/a/b"
-    let r4 = joinUrls "" "/b"
+    let r4 = un URL $ joinUrls (URL "") (URL "/b")
     assert ("expected /b but got " <> r4) $ r4 == "/b"
-    let r5 = joinUrls "/a" ""
+    let r5 = un URL $ joinUrls (URL "/a") (URL "")
     assert ("expected /a but got " <> r5) $ r5 == "/a"
 
   test "showLocation" do
-    let r1 = showLocation (Home : User 1 : Nil)
+    let r1 = un URL $ showLocation (Home : User 1 : Nil)
         e1 = "/home/user/1"
     assert ("expected " <> e1 <> " but got " <> r1) $ r1 == e1
-    let r2 = showLocation (Home : User 1 : Settings : Nil)
+    let r2 = un URL $ showLocation (Home : User 1 : Settings : Nil)
         e2 = "/home/user/1/settings/"
     assert ("expected " <> e2 <> " but got " <> r2) $ r2 == e2
-    let r3 = showLocation [Home, Settings, User 1]
+    let r3 = un URL $ showLocation [Home, Settings, User 1]
         e3 = "/home/settings/user/1"
     assert ("expected " <> e3 <> " but got " <> r3) $ r3 == e3
 

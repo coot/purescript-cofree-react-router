@@ -15,6 +15,7 @@ module React.Router.Types
 import Prelude
 
 import Control.Comonad.Cofree ((:<), Cofree)
+import DOM.HTML.History (URL)
 import Data.Lens (Lens', lens)
 import Data.List (List)
 import Data.Map (Map)
@@ -111,7 +112,7 @@ withoutIndex r rs = Tuple r Nothing :< rs
 -- | `:+` lets define routes without index route
 infixr 5 withoutIndex as :+
 
-newtype RouterConfig = RouterConfig { baseName :: Maybe String }
+newtype RouterConfig = RouterConfig { baseName :: Maybe URL }
 
 derive instance newtypeRouterConfig :: Newtype RouterConfig _
 
