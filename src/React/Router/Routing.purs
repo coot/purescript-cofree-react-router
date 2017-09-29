@@ -67,7 +67,7 @@ shake cof = case head cof of
             Just cofHead ->
               let tail_ = go $ tail cof_
               in if not (null tail_) || matchEnd cofHead.url
-                then (cofHead :< go (tail cof_)) : cofs_
+                then (cofHead :< tail_) : cofs_
                 else cofs_
 
 matchRouter
