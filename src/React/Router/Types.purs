@@ -1,15 +1,16 @@
 module React.Router.Types 
   ( RouterConfig(RouterConfig)
   , IndexRoute(IndexRoute)
-  , Route(Route)
+  , Route(Route, OpenRoute)
   , RouteClass
   , RouteProps(..)
   , Router
   , defaultConfig
   , withoutIndex
   , (:+)
-  -- lenses
-  , urlLens
+  , _id
+  , _url
+  , _cls
   ) where
 
 import Prelude
@@ -66,7 +67,24 @@ type RouteClass props arg = (RoutePropsClass props arg) => ReactClass (props arg
 
 -- | Route type
 -- | The first parameter is an identifier.
-data Route props arg = Route String (R.Match arg) (RouteClass props arg)
+data Route props arg
+  = Route String (R.Match arg) (RouteClass props arg)
+  | OpenRoute String (R.Match arg) (RouteClass props arg)
+
+_id :: forall props arg. Route props arg -> String
+_id = case _ of
+  Route a _ _ -> a
+  OpenRoute a _ _ -> a
+
+_url :: forall props arg. Route props arg -> R.Match arg
+_url = case _ of
+  Route _ a _ -> a
+  OpenRoute _ a _ -> a
+
+_cls :: forall props arg. RoutePropsClass props arg => (Route props arg) -> (RouteClass props arg)
+_cls = case _ of
+  Route _ _ a -> a
+  OpenRoute _ _ a -> a
 
 -- | IndexRoute type
 -- | The first parameter is the id property.
@@ -74,12 +92,7 @@ data IndexRoute props arg = IndexRoute String (RouteClass props arg)
 
 instance showRoute :: Show (Route props arg) where
   show (Route id_ _ _) = "<Route \"" <> id_ <> "\">"
-
-urlLens
-  :: forall props arg
-   . (RoutePropsClass props arg)
-  => Lens' (Route props arg) (R.Match arg)
-urlLens = lens (\(Route _ url _) -> url) (\(Route id _ cls) url -> Route id url cls)
+  show (OpenRoute id_ _ _) = "<OpenROute \"" <> id_ <> "\">"
 
 -- | Router
 -- | ```

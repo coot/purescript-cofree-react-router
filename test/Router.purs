@@ -15,8 +15,8 @@ import Global (decodeURIComponent)
 import Prelude hiding (div)
 import React (ReactElement, ReactThis, createClass, createClassStateless, getChildren, getProps, spec)
 import React.DOM (div, text)
-import React.DOM.Props (className, _id)
-import React.Router (matchRouter, runRouter, IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
+import React.DOM.Props (className, _id) as P
+import React.Router (IndexRoute(..), Route(..), RouteClass, RouteProps, Router, _id, idLens, matchRouter, runRouter, (:+))
 import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
@@ -25,21 +25,21 @@ import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
 
 routeClass :: forall args. RouteClass RouteProps args
-routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
+routeClass = createClassStateless (\props -> div [P._id (view idLens props)] [text $ "route: " <> (view idLens props)])
 
 routeClass2 :: forall args. RouteClass RouteProps args
 routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
-                    pure $ div [_id (view idLens props)] children)
+                    pure $ div [P._id (view idLens props)] children)
 
 indexRouteClass :: forall args. RouteClass RouteProps args
 indexRouteClass = 
     let clsSpec = (spec 0) $
         (\this -> do
                 props <- getProps this
-                pure $ div [_id (view idLens props), className "index"] []
+                pure $ div [P._id (view idLens props), P.className "index"] []
         )
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
@@ -47,7 +47,7 @@ idTree
   :: forall args r
    . Cofree List {url :: R.Route, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r}
   -> Cofree List {id :: String, indexId :: Maybe String}
-idTree = map (\{url, route: (Route id_ _ _), indexRoute} -> {id: id_, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
+idTree = map (\{url, route, indexRoute} -> {id: _id route, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
 foreign import getIds :: ReactElement -> Array String
 
@@ -142,11 +142,11 @@ testSuite =
                 router :: Router RouteProps Unit
                 router =
                   Route "main" (unit <$ lit "") routeClass :+
-                    (Route "home" (unit <$ lit "home") routeClass :+ Nil)
+                      (Route "home" (unit <$ lit "home") routeClass :+ Nil)
                     : (Tuple (Route "user" (unit <$ (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
                         (Route "book" (unit <$ (lit "books" *> int)) routeClass :+
                           (Route "pages" (unit <$ lit "pages") routeClass :+
-                            (Route "page" (unit <$ int) routeClass :+ Nil)
+                              (Route "page" (unit <$ int) routeClass :+ Nil)
                             : Nil)
                           : Nil)
                         : Nil)
@@ -156,19 +156,19 @@ testSuite =
                 router2 :: Router RouteProps Unit
                 router2 =
                   Route "main" (unit <$ lit "") routeClass2 :+
-                    (Route "home" (unit <$ lit "home") routeClass2 :+
-                      (Route "user" (unit <$ lit "user") routeClass2 :+ Nil)
-                      : Nil)
+                      (Route "home" (unit <$ lit "home") routeClass2 :+
+                          (Route "user" (unit <$ lit "user") routeClass2 :+ Nil)
+                        : Nil)
                     : (Route "user-settings" (unit <$ (lit "home" *> lit "user" *> lit "settings")) routeClass :+ Nil)
                     : Nil
 
                 router3 :: Router RouteProps Unit
                 router3 = 
-                  (Route "main" (unit <$ lit "") routeClass2) :+
-                    (Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
-                      (Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< Nil)
-                      : (Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ Nil)
-                      : Nil)
+                    (Route "main" (unit <$ lit "") routeClass2) :+
+                      (Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
+                          (Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< Nil)
+                        : (Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ Nil)
+                        : Nil)
                   : Nil
 
                 router4 :: Router RouteProps Locations
@@ -315,19 +315,19 @@ testSuite =
                 test "should find a route if a less speicalized one hides it" do
                   checkElementTree router "/user/2/settings" $
                     "main" :<
-                      ("user-settings" :< Nil)
+                        ("user-settings" :< Nil)
                       : Nil
                   checkElementTree router "/user/2/books/3" $
                     "main" :<
-                      ("user" :< 
-                        ("book" :< Nil)
-                        : Nil)
+                        ("user" :< 
+                            ("book" :< Nil)
+                          : Nil)
                       : Nil
 
                 test "find a route in a different branch" do
                   checkElementTree router2 "/home/user/settings" $
                     "main" :<
-                      ("user-settings" :< Nil)
+                        ("user-settings" :< Nil)
                       : Nil
 
                 test "should mount children" do
