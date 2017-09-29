@@ -112,9 +112,18 @@ withoutIndex r rs = Tuple r Nothing :< rs
 -- | `:+` lets define routes without index route
 infixr 5 withoutIndex as :+
 
-newtype RouterConfig = RouterConfig { baseName :: Maybe URL }
+newtype RouterConfig = RouterConfig
+  -- | URL base name at which the router should expect to be mounted
+  { baseName :: Maybe URL
+  -- | If `ignore` returns `true`, this router will not update its state.
+  -- | This lets emped a router inside another one.
+  , ignore :: URL -> Boolean
+  }
 
 derive instance newtypeRouterConfig :: Newtype RouterConfig _
 
 defaultConfig :: RouterConfig
-defaultConfig = RouterConfig { baseName: Nothing }
+defaultConfig = RouterConfig
+  { baseName: Nothing
+  , ignore: \_ -> false
+  }

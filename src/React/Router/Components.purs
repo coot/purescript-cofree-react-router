@@ -28,7 +28,7 @@ import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, const, discard, pure, show, unit, void, ($), (<<<), (<>), (>>=), (||))
+import Prelude (Unit, bind, const, discard, pure, show, unit, unless, void, ($), (<<<), (<>), (>>=), (||))
 import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -71,6 +71,8 @@ getLocation cfg = do
      <> p <> """ to begin with: """ <> (maybe "" (un URL) cfgR.baseName))
   pure { hash: h, pathname: stripBaseName cfgR.baseName (URL p), search: s }
 
+formatURL :: URL -> String -> String -> String
+formatURL (URL pathname) search hash = pathname <> search <> hash
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
 -- | class for the router.
@@ -79,7 +81,7 @@ browserRouter
    . (RoutePropsClass props arg)
   => RouterConfig
   -> ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
-browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
+browserRouter cfg@(RouterConfig { ignore } ) = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = do
       getLocation cfg
@@ -90,7 +92,7 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
     render this = do
       props <- getProps this
       state <- readState this
-      let loc = un URL state.pathname <> state.search <> state.hash
+      let loc = formatURL state.pathname state.search state.hash
 
       case runRouter loc props.router of
         Nothing -> do
@@ -103,7 +105,9 @@ browserRouter cfg = (spec' initialState render) { displayName = "BrowserRouter",
 
     handler this ev = do
       loc <- getLocation cfg
-      transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search })
+      let url = URL (formatURL loc.pathname loc.search loc.hash)
+      unless (ignore url)
+        (transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search }))
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
