@@ -1,5 +1,7 @@
 module React.Router.Components
-  ( browserRouter
+  ( Location
+  , BrowserRouter
+  , browserRouter
   , browserRouterClass
   , LinkProps(LinkProps)
   , linkSpec
@@ -28,8 +30,8 @@ import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, const, discard, pure, show, unit, unless, void, ($), (<<<), (<>), (>>=), (||))
-import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', transformState)
+import Prelude (Unit, bind, const, discard, pure, show, unit, unless, void, ($), (<$>), (<<<), (<>), (>>=), (||))
+import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', writeState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
 import React.Router.Class (class RoutePropsClass)
@@ -38,15 +40,16 @@ import React.Router.Types (IndexRoute, Route, RouterConfig(RouterConfig))
 import React.Router.Utils (hasBaseName, joinUrls, stripBaseName, warning)
 
 -- | RouterState type
-type RouterState =
-  { hash :: String
-  , pathname :: URL
+newtype Location = Location
+  { pathname :: URL
   , search :: String
+  , hash :: String
   }
 
--- | RouterProps type
-type RouterProps props arg notFoundProps =
+-- | BrowserRouter prop type
+newtype BrowserRouter props arg notFoundProps = BrowserRouter
   { router :: Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  , config :: RouterConfig
   , notFound :: Maybe
     { cls :: ReactClass notFoundProps
     , props :: notFoundProps
@@ -57,42 +60,41 @@ foreign import createPopStateEvent :: URL -> Event
 
 getLocation
   :: forall e
-   . RouterConfig
-  -> Eff (dom :: DOM, console :: CONSOLE | e) { hash :: String, pathname :: URL, search :: String }
-getLocation cfg = do
+   . Eff (dom :: DOM, console :: CONSOLE | e) Location
+getLocation = do
   l <- window >>= location
   h <- hash l
   p <- pathname l
   s <- search l
-  let cfgR = un RouterConfig cfg
-  pure { hash: h, pathname: stripBaseName cfgR.baseName (URL p), search: s }
+  pure $ Location { hash: h, pathname: (URL p), search: s }
 
-formatURL :: URL -> String -> String -> URL
-formatURL (URL pathname) search hash = URL $ pathname <> search <> hash
+runLocation :: Location -> URL
+runLocation (Location { pathname: URL pathname, search, hash }) = URL $ pathname <> search <> hash
+
+stripBaseNameL :: Maybe URL -> Location -> Location
+stripBaseNameL a (Location b) = Location (b { pathname = stripBaseName a b.pathname })
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
 -- | class for the router.
 browserRouter
   :: forall eff props arg notfound
    . (RoutePropsClass props arg)
-  => RouterConfig
-  -> ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
-browserRouter cfg@(RouterConfig { baseName, ignore } ) = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
+  => ReactSpec (BrowserRouter props arg notfound) Location (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
+browserRouter = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = do
-      getLocation cfg
+      BrowserRouter { config: RouterConfig { baseName } } <- getProps this
+      stripBaseNameL baseName <$> getLocation
 
     renderNotFound props =
       maybe' (const $ div' []) (\nf -> createElement nf.cls nf.props []) props.notFound
 
     render this = do
-      props <- getProps this
-      state <- readState this
-      let loc = formatURL state.pathname state.search state.hash
-
-      case runRouter loc props.router of
+      BrowserRouter props <- getProps this
+      loc <- readState this
+      case runRouter (runLocation loc) props.router of
         Nothing -> do
-          warning false ("Router did not found path '" <> un URL loc <> "'")
+          warning false ("Router did not found path '" <> un URL (runLocation loc) <> "'")
           pure $ renderNotFound props
         Just el -> pure el
 
@@ -100,17 +102,20 @@ browserRouter cfg@(RouterConfig { baseName, ignore } ) = (spec' initialState ren
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
 
     handler this ev = do
+      BrowserRouter { config: RouterConfig { baseName, ignore } } <- getProps this
       cur <- readState this
-      loc <- getLocation cfg
-      let to = formatURL loc.pathname loc.search loc.hash
-          from = formatURL cur.pathname cur.search cur.hash
+      loc' <- getLocation
+      let to' = runLocation loc'
+          loc = stripBaseNameL baseName loc'
+          to = runLocation loc
+          from = runLocation cur
       unless (ignore { to, from })
         (do
           warning
-            (isNothing baseName || hasBaseName baseName to)
+            (isNothing baseName || hasBaseName baseName to')
             ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
-             <> un URL to <> """ to begin with: """ <> (maybe "" (un URL) baseName))
-          transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search }))
+             <> un URL to' <> """ to begin with: """ <> (maybe "" (un URL) baseName))
+          void $ writeState this loc)
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
@@ -124,9 +129,8 @@ browserRouter cfg@(RouterConfig { baseName, ignore } ) = (spec' initialState ren
 browserRouterClass
   :: forall props arg notfound
    . (RoutePropsClass props arg)
-  => RouterConfig
-  -> ReactClass (RouterProps props arg notfound)
-browserRouterClass cfg = createClass (browserRouter cfg)
+  => ReactClass (BrowserRouter props arg notfound)
+browserRouterClass = createClass browserRouter
 
 newtype LinkProps eff = LinkProps
   { url :: URL
