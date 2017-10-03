@@ -31,7 +31,8 @@
     "purescript-const": "^3.0.0",
     "purescript-maps": "^3.0.0",
     "purescript-react-dom": "^4.0.0",
-    "purescript-routing": "^6.0.0"
+    "purescript-routing": "git://github.com/coot/purescript-routing#eqRoutePart",
+    "purescript-unsafe-reference": "^2.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",

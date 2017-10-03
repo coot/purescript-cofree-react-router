@@ -4,6 +4,7 @@ module React.Router.Class where
 import Control.Comonad.Cofree (Cofree)
 import Data.Lens (Lens')
 import Data.List (List)
+import Data.Tuple.Nested (type (/\))
 import Data.Map (Map)
 import Routing.Types (Route) as R
 
@@ -16,4 +17,4 @@ import Routing.Types (Route) as R
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props arg | props -> arg where
   idLens :: Lens' (props arg) String
-  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List {url :: R.Route, arg :: arg}) -> props arg
+  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List (R.Route /\ arg)) -> props arg

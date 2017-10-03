@@ -5,18 +5,20 @@ module Test.Router (
 import Control.Comonad.Cofree (Cofree, head, hoistCofree, unfoldCofree, (:<))
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
+import DOM.HTML.History (URL(..))
 import Data.Array as A
 import Data.Lens (view)
 import Data.List (List(..), fromFoldable, toUnfoldable, (:))
 import Data.Map as M
 import Data.Maybe (Maybe(Nothing, Just), maybe)
+import Data.Newtype (un)
 import Data.Tuple (Tuple(..))
 import Global (decodeURIComponent)
 import Prelude hiding (div)
 import React (ReactElement, ReactThis, createClass, createClassStateless, getChildren, getProps, spec)
 import React.DOM (div, text)
-import React.DOM.Props (className, _id)
-import React.Router (matchRouter, runRouter, IndexRoute(..), Route(..), RouteClass, RouteProps, Router, idLens, (:+))
+import React.DOM.Props (className, _id) as P
+import React.Router (IndexRoute(..), Leaf(..), Route(..), RouteClass, RouteProps, Router, _id, idLens, matchRouter, runRouter, (:+))
 import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
@@ -25,29 +27,29 @@ import Test.Unit.Assert (assert)
 import Unsafe.Coerce (unsafeCoerce)
 
 routeClass :: forall args. RouteClass RouteProps args
-routeClass = createClassStateless (\props -> div [_id (view idLens props)] [text $ "route: " <> (view idLens props)])
+routeClass = createClassStateless (\props -> div [P._id (view idLens props)] [text $ "route: " <> (view idLens props)])
 
 routeClass2 :: forall args. RouteClass RouteProps args
 routeClass2 = createClass $ spec 0 $
               (\this -> do
                     props <- getProps this
                     children <- getChildren this
-                    pure $ div [_id (view idLens props)] children)
+                    pure $ div [P._id (view idLens props)] children)
 
 indexRouteClass :: forall args. RouteClass RouteProps args
-indexRouteClass = 
+indexRouteClass =
     let clsSpec = (spec 0) $
         (\this -> do
                 props <- getProps this
-                pure $ div [_id (view idLens props), className "index"] []
+                pure $ div [P._id (view idLens props), P.className "index"] []
         )
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
 idTree
   :: forall args r
-   . Cofree List {url :: R.Route, route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r}
+   . Cofree List (Leaf args ( route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r))
   -> Cofree List {id :: String, indexId :: Maybe String}
-idTree = map (\{url, route: (Route id_ _ _), indexRoute} -> {id: id_, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
+idTree = map (\(Leaf {url, route, indexRoute}) -> {id: _id route, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
 foreign import getIds :: ReactElement -> Array String
 
@@ -92,7 +94,7 @@ getTail = _getProp "tail" Just Nothing
 unsafeGetChildren :: ReactElement -> Array ReactElement
 unsafeGetChildren = unsafePerformEff <<< getChildren <<< unsafeCoerceToReactElement
   where
-    unsafeCoerceToReactElement :: forall props state. ReactElement -> ReactThis props state 
+    unsafeCoerceToReactElement :: forall props state. ReactElement -> ReactThis props state
     unsafeCoerceToReactElement = unsafeCoerce
 
 -- this works only for elements with id in props
@@ -142,11 +144,11 @@ testSuite =
                 router :: Router RouteProps Unit
                 router =
                   Route "main" (unit <$ lit "") routeClass :+
-                    (Route "home" (unit <$ lit "home") routeClass :+ Nil)
+                      (Route "home" (unit <$ lit "home") routeClass :+ Nil)
                     : (Tuple (Route "user" (unit <$ (lit "user" *> int)) routeClass) (Just $ IndexRoute "user-index" indexRouteClass) :<
                         (Route "book" (unit <$ (lit "books" *> int)) routeClass :+
                           (Route "pages" (unit <$ lit "pages") routeClass :+
-                            (Route "page" (unit <$ int) routeClass :+ Nil)
+                              (Route "page" (unit <$ int) routeClass :+ Nil)
                             : Nil)
                           : Nil)
                         : Nil)
@@ -156,19 +158,19 @@ testSuite =
                 router2 :: Router RouteProps Unit
                 router2 =
                   Route "main" (unit <$ lit "") routeClass2 :+
-                    (Route "home" (unit <$ lit "home") routeClass2 :+
-                      (Route "user" (unit <$ lit "user") routeClass2 :+ Nil)
-                      : Nil)
+                      (Route "home" (unit <$ lit "home") routeClass2 :+
+                          (Route "user" (unit <$ lit "user") routeClass2 :+ Nil)
+                        : Nil)
                     : (Route "user-settings" (unit <$ (lit "home" *> lit "user" *> lit "settings")) routeClass :+ Nil)
                     : Nil
 
                 router3 :: Router RouteProps Unit
-                router3 = 
-                  (Route "main" (unit <$ lit "") routeClass2) :+
-                    (Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
-                      (Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< Nil)
-                      : (Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ Nil)
-                      : Nil)
+                router3 =
+                    (Route "main" (unit <$ lit "") routeClass2) :+
+                      (Tuple (Route "home" (unit <$ lit "home") routeClass2) (Just $ IndexRoute "home-index" indexRouteClass) :<
+                          (Tuple (Route "users" (unit <$ lit "users") routeClass2) (Just $ IndexRoute "users-index" indexRouteClass) :< Nil)
+                        : (Route "user" (unit <$ (lit "users" *> int)) routeClass2 :+ Nil)
+                        : Nil)
                   : Nil
 
                 router4 :: Router RouteProps Locations
@@ -190,8 +192,8 @@ testSuite =
 
                 checkElementTree router_ url expected =
                   case runRouter url router_ of
-                       Nothing -> failure $ "router didn't found <" <> url <> ">"
-                       Just el -> 
+                       Nothing -> failure $ "router didn't found <" <> un URL url <> ">"
+                       Just el ->
                          let chTree = unsafeChildrenTree el
                           in assert
                             ("children trees are not equal: got\n" <> (showChildrenTree chTree) <> "\nexpected\n" <> (showChildrenTree expected)) $
@@ -211,11 +213,11 @@ testSuite =
             in do
                 test "should find patterns" do
                   checkTree router "/" $ {id: "main", indexId: Nothing} :< Nil
-                  checkElementTree router "/" $ "main" :< Nil
+                  checkElementTree router (URL "/") $ "main" :< Nil
                   checkTree router "/home" $
                     {id: "main", indexId: Nothing} :<
                       (({id: "home", indexId: Nothing} :< Nil) : Nil)
-                  checkElementTree router "/home" $
+                  checkElementTree router (URL "/home") $
                     "main" :<
                       ("home" :< Nil) : Nil
 
@@ -223,7 +225,7 @@ testSuite =
                   checkTree router "/user/2" $
                     {id: "main", indexId: Nothing}  :<
                       ({id: "user", indexId: Just "user-index"} :< Nil) : Nil
-                  checkElementTree router "/user/2" $
+                  checkElementTree router (URL "/user/2") $
                     "main" :<
                       ("user" :<
                         ("user-index" :< Nil)
@@ -237,7 +239,7 @@ testSuite =
                       [{id: "user", indexId: Just "user-index"} :<
                         [{id: "book", indexId: Nothing} :< []]]
                   -- but here the index cannot be present
-                  checkElementTree router "/user/2/books/1" $ unhoist $
+                  checkElementTree router (URL "/user/2/books/1") $ unhoist $
                     "main" :<
                       ["user" :<
                         ["book" :< []]]
@@ -249,7 +251,7 @@ testSuite =
                         [{id: "book", indexId: Nothing} :<
                           [{id: "pages", indexId: Nothing} :<
                             [{id: "page", indexId: Nothing} :< []]]]]
-                  checkElementTree router "/user/2/books/1/pages/100" $ unhoist $
+                  checkElementTree router (URL "/user/2/books/1/pages/100") $ unhoist $
                     "main" :<
                       ["user" :<
                         ["book" :<
@@ -259,7 +261,7 @@ testSuite =
                 test "mount various paths at the same time" $
                   let rtr =
                         Route "main" (unit <$ lit "") routeClass :+
-                          (Route "users" (unit <$ lit "users") routeClass :+ Nil) 
+                          (Route "users" (unit <$ lit "users") routeClass :+ Nil)
                           : (Route "books" (unit <$ lit "users") routeClass :+ Nil)
                           : Nil
                    in do
@@ -268,8 +270,8 @@ testSuite =
                          ({id: "users", indexId: Nothing} :< Nil)
                          : ({id: "books", indexId: Nothing} :< Nil)
                          : Nil
-                    checkElementTree rtr "/users" $
-                      "main" :< 
+                    checkElementTree rtr (URL "/users") $
+                      "main" :<
                         ("users" :< Nil)
                         : ("books" :< Nil)
                         : Nil
@@ -285,7 +287,7 @@ testSuite =
                           ({id: "users", indexId: Just "users-index"} :< Nil)
                           : ({id: "books", indexId: Just "books-index"} :< Nil)
                           : Nil
-                      checkElementTree rtr "/users" $
+                      checkElementTree rtr (URL "/users") $
                         "main" :<
                           ("users" :<
                             ("users-index" :< Nil)
@@ -298,34 +300,34 @@ testSuite =
 
                 suite "404 pages" do
                   test "not fully consumed path" do
-                    case runRouter "/user/2/404-page" router of
+                    case runRouter (URL "/user/2/404-page") router of
                         Nothing -> success
                         Just el -> failure $ "router found \"/user/2/404-page\": " <> show (getIds el)
 
                   test "not fully consumed path 2" do
-                    case runRouter "/user/2/books/10/404-page" router of
+                    case runRouter (URL "/user/2/books/10/404-page") router of
                         Nothing -> success
                         Just el -> failure $ "router found \"/user/2/books/10/404-page\": " <> show (getIds el)
 
                   test "root path not matching" do
-                    case runRouter "/404-page/main" router of
+                    case runRouter (URL "/404-page/main") router of
                         Nothing  -> success
                         Just el -> failure $ "router found \"/404-page/main\": " <> show (getIds el)
 
                 test "should find a route if a less speicalized one hides it" do
-                  checkElementTree router "/user/2/settings" $
+                  checkElementTree router (URL "/user/2/settings") $
                     "main" :<
                       ("user-settings" :< Nil)
                       : Nil
-                  checkElementTree router "/user/2/books/3" $
+                  checkElementTree router (URL "/user/2/books/3") $
                     "main" :<
-                      ("user" :< 
+                      ("user" :<
                         ("book" :< Nil)
                         : Nil)
                       : Nil
 
                 test "find a route in a different branch" do
-                  checkElementTree router2 "/home/user/settings" $
+                  checkElementTree router2 (URL "/home/user/settings") $
                     "main" :<
                       ("user-settings" :< Nil)
                       : Nil
@@ -337,19 +339,19 @@ testSuite =
                       ({id: "home", indexId: Nothing} :< Nil)
                       : Nil
 
-                  checkElementTree router2 "/home" $
+                  checkElementTree router2 (URL "/home") $
                     "main" :<
                       ("home" :< Nil)
                       : Nil
 
-                  case runRouter "/home" router2 of
+                  case runRouter (URL "/home") router2 of
                        Nothing -> failure "router2 didn't found </home>"
                        Just el -> do
                          let len = A.length $ unsafeGetChildren el
                          assert ("should have 1 child while found: " <> show len <> " children " <> (show $ getIds el) ) $ len == 1
 
                 test "should mount index route" do
-                  checkElementTree router3 "/home/users" $
+                  checkElementTree router3 (URL "/home/users") $
                     "main" :<
                       ("home" :<
                         ("users" :<
@@ -357,12 +359,12 @@ testSuite =
                           : Nil)
                         : Nil)
                       : Nil
-                  case runRouter "/home/users" router3 of
+                  case runRouter (URL "/home/users") router3 of
                        Nothing -> failure "router3 didn't found </home/user>"
                        Just el -> assert "the last child is not an index route " $ isLastIndexRoute el
 
                 test "should mount only one index route" do
-                  case runRouter "/home/users" router3 of
+                  case runRouter (URL "/home/users") router3 of
                        Nothing -> failure "router3 didn't found </home/user>"
                        Just el ->
                          let cnt = countIndexRoutes el
@@ -370,41 +372,41 @@ testSuite =
                             assert ("there should by only one index route mounted, but found: " <> show cnt) $ cnt == 1
 
                 test "should not mount index route when it is not configured" do
-                  checkElementTree router3 "/home/users/1" do
+                  checkElementTree router3 (URL "/home/users/1") do
                     "main" :<
                       ("home" :<
                         ("user" :< Nil)
                         : Nil)
                       : Nil
-                  case runRouter "/home/users/1" router3 of
+                  case runRouter (URL "/home/users/1") router3 of
                        Nothing -> failure "router3 didn't found </home/users/1>"
                        Just el ->
                          let cnt = countIndexRoutes el
                           in do
                             assert ("there should be no index route mounted, but found: " <> show cnt) $ cnt == 0
 
-                test "test args" 
-                    let url = "/user/2/books/1/pages/100"
+                test "test args"
+                    let url = URL "/user/2/books/1/pages/100"
                         userExpected = User 2 : Ignore : Nil
                         pageExpected = Page 100 : Ignore : Book 1 : User 2 : Ignore : Nil
                      in case runRouter url router4 of
-                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Nothing -> failure $ "router didn't found <" <> un URL url <> ">"
                              Just el -> let margsUser = getArgs "user" el
                                             margsPage = getArgs "page" el
                                          in do
                                            case margsUser, margsPage of
                                                 Just argsUser, Just argsPage -> do
-                                                    assert ("wrong #user args at " <> url <> " " <> show argsUser <> " but expected: " <> show userExpected ) $ argsUser == userExpected
-                                                    assert ("wrong #page args at " <> url <> " " <> show argsPage <> " but expected: " <> show pageExpected ) $ argsPage == pageExpected
+                                                    assert ("wrong #user args at " <> un URL url <> " " <> show argsUser <> " but expected: " <> show userExpected ) $ argsUser == userExpected
+                                                    assert ("wrong #page args at " <> un URL url <> " " <> show argsPage <> " but expected: " <> show pageExpected ) $ argsPage == pageExpected
                                                 Nothing, _ -> failure "#user not found"
                                                 _, Nothing -> failure "#page not found"
 
-                test "test arg" 
-                    let url = "/user/2/books/1/pages/100"
+                test "test arg"
+                    let url = URL "/user/2/books/1/pages/100"
                         userExpected = User 2
                         pageExpected = Page 100
                      in case runRouter url router4 of
-                             Nothing -> failure $ "router didn't found <" <> url <> ">"
+                             Nothing -> failure $ "router didn't found <" <> un URL url <> ">"
                              Just el -> let margUser = getArg "user" el
                                             margPage = getArg "page" el
                                          in do
@@ -416,15 +418,15 @@ testSuite =
                                                 _, Nothing -> failure "#page not found"
 
                 test "test query"
-                    let url = "/user/1/books/2/pages/4/?userId=8&bookId=16&pageId=32"
-                        expected = M.fromFoldable 
+                    let url = URL "/user/1/books/2/pages/4/?userId=8&bookId=16&pageId=32"
+                        expected = M.fromFoldable
                                     [ Tuple "userId" "8"
                                     , Tuple "bookId" "16"
                                     , Tuple "pageId" "32"
                                     ]
                     in case runRouter url router4 of
-                         Nothing -> failure $ "router didn't found <" <> url <> ">"
-                         Just el -> 
+                         Nothing -> failure $ "router didn't found <" <> un URL url <> ">"
+                         Just el ->
                            case getQuery "main" el, getQuery "user" el of
                               Just qMain, Just qHome -> do
                                 assert ("got #main props: " <> show qMain <> " expecting " <> show expected) $ qMain == expected
@@ -433,9 +435,9 @@ testSuite =
                               _, Nothing -> failure "user not found"
 
                 test "test tail"
-                  let url = "/user/1/books/2/pages/4"
+                  let url = URL "/user/1/books/2/pages/4"
                   in case runRouter url router4 of
-                     Nothing -> failure $ "router didn't found <" <> url <> ">"
+                     Nothing -> failure $ "router didn't found <" <> un URL url <> ">"
                      Just el ->
                        case getTail "main" el, getTail "user" el of
                          Just tailMain, Just tailUser ->
@@ -449,9 +451,9 @@ testSuite =
                          _, Nothing -> failure "user not found"
 
                 test "test tail on index"
-                  let url = "/user/1"
+                  let url = URL "/user/1"
                   in case runRouter url router4 of
-                       Nothing -> failure $ "router did't found <" <> url <> ">"
+                       Nothing -> failure $ "router did't found <" <> un URL url <> ">"
                        Just el ->
                          case getTail "user" el of
                            Nothing -> failure "user not found"
