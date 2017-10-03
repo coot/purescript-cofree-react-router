@@ -8,6 +8,7 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Comonad.Cofree (Cofree, head, tail, (:<))
 import Control.Monad.State (State, evalState, get, modify)
+import DOM.HTML.History (URL(..))
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.Foldable (foldMap, foldr)
@@ -102,10 +103,10 @@ matchRouter url_ router = shake $ go url_ router
 runRouter
   :: forall props arg
    . (RoutePropsClass props arg)
-  => String
+  => URL
   -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   -> Maybe ReactElement
-runRouter urlStr router =
+runRouter (URL urlStr) router =
   evalState (sequence $ createRouteElement <$> matchRouter url_ router) Nil
     where
     url_ = parse decodeURIComponent urlStr

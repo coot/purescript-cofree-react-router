@@ -71,8 +71,8 @@ getLocation cfg = do
      <> p <> """ to begin with: """ <> (maybe "" (un URL) cfgR.baseName))
   pure { hash: h, pathname: stripBaseName cfgR.baseName (URL p), search: s }
 
-formatURL :: URL -> String -> String -> String
-formatURL (URL pathname) search hash = pathname <> search <> hash
+formatURL :: URL -> String -> String -> URL
+formatURL (URL pathname) search hash = URL $ pathname <> search <> hash
 
 -- | `ReactSpec` for the `browserRouterClass` - the main entry point react
 -- | class for the router.
@@ -96,7 +96,7 @@ browserRouter cfg@(RouterConfig { ignore } ) = (spec' initialState render) { dis
 
       case runRouter loc props.router of
         Nothing -> do
-          warning false ("Router did not found path '" <> loc <> "'")
+          warning false ("Router did not found path '" <> un URL loc <> "'")
           pure $ renderNotFound props
         Just el -> pure el
 
@@ -104,9 +104,11 @@ browserRouter cfg@(RouterConfig { ignore } ) = (spec' initialState render) { dis
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
 
     handler this ev = do
+      cur <- readState this
       loc <- getLocation cfg
-      let url = URL (formatURL loc.pathname loc.search loc.hash)
-      unless (ignore url)
+      let to = formatURL loc.pathname loc.search loc.hash
+          from = formatURL cur.pathname cur.search cur.hash
+      unless (ignore { to, from })
         (transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search }))
 
 -- | React class for the `browerRouter` element.  Use it to init your application.

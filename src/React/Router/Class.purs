@@ -16,4 +16,4 @@ import Routing.Types (Route) as R
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props arg | props -> arg where
   idLens :: Lens' (props arg) String
-  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List {url :: R.Route, arg :: arg}) -> props arg
+  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List {url :: R.Route , arg :: arg}) -> props arg

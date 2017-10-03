@@ -43,7 +43,7 @@ newtype RouteProps arg = RouteProps
   -- | tail of the route params, this complements the information from `args`.
   -- | It has the information about all mounted children.  You can use
   -- | `React.Router.Utils.findLocation` to query it.
-  , tail :: List (Cofree List {url :: R.Route, arg :: arg})
+  , tail :: List (Cofree List {url :: R.Route, arg ::  arg})
   }
 
 -- | lens to get the id of route properties
@@ -130,7 +130,7 @@ newtype RouterConfig = RouterConfig
   { baseName :: Maybe URL
   -- | If `ignore` returns `true`, this router will not update its state.
   -- | This lets emped a router inside another one.
-  , ignore :: URL -> Boolean
+  , ignore :: { from :: URL, to :: URL } -> Boolean
   }
 
 derive instance newtypeRouterConfig :: Newtype RouterConfig _
