@@ -18,7 +18,7 @@ import Prelude hiding (div)
 import React (ReactElement, ReactThis, createClass, createClassStateless, getChildren, getProps, spec)
 import React.DOM (div, text)
 import React.DOM.Props (className, _id) as P
-import React.Router (IndexRoute(..), Leaf(..), Route(..), RouteClass, RouteProps, Router, _id, idLens, matchRouter, runRouter, (:+))
+import React.Router (IndexRoute(IndexRoute), LeafVal(LeafVal), Route(Route), RouteClass, RouteProps, Router, _id, idLens, matchRouter, runRouter, (:+))
 import Routing.Match.Class (int, lit)
 import Routing.Parser (parse) as R
 import Routing.Types (Route) as R
@@ -47,9 +47,9 @@ indexRouteClass =
 
 idTree
   :: forall args r
-   . Cofree List (Leaf args ( route :: Route RouteProps args, indexRoute :: Maybe (IndexRoute RouteProps args) | r))
+   . Cofree List (LeafVal RouteProps args)
   -> Cofree List {id :: String, indexId :: Maybe String}
-idTree = map (\(Leaf {url, route, indexRoute}) -> {id: _id route, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
+idTree = map (\(LeafVal {url, route, indexRoute}) -> {id: _id route, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
 
 foreign import getIds :: ReactElement -> Array String
 
