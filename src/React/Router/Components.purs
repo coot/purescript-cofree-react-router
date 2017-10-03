@@ -65,10 +65,6 @@ getLocation cfg = do
   p <- pathname l
   s <- search l
   let cfgR = un RouterConfig cfg
-  warning
-    (isNothing cfgR.baseName || (hasBaseName cfgR.baseName (URL p)))
-    ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
-     <> p <> """ to begin with: """ <> (maybe "" (un URL) cfgR.baseName))
   pure { hash: h, pathname: stripBaseName cfgR.baseName (URL p), search: s }
 
 formatURL :: URL -> String -> String -> URL
@@ -81,7 +77,7 @@ browserRouter
    . (RoutePropsClass props arg)
   => RouterConfig
   -> ReactSpec (RouterProps props arg notfound) RouterState (history :: HISTORY, dom :: DOM, console :: CONSOLE | eff)
-browserRouter cfg@(RouterConfig { ignore } ) = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
+browserRouter cfg@(RouterConfig { baseName, ignore } ) = (spec' initialState render) { displayName = "BrowserRouter", componentWillMount = componentWillMount }
   where
     initialState this = do
       getLocation cfg
@@ -109,7 +105,12 @@ browserRouter cfg@(RouterConfig { ignore } ) = (spec' initialState render) { dis
       let to = formatURL loc.pathname loc.search loc.hash
           from = formatURL cur.pathname cur.search cur.hash
       unless (ignore { to, from })
-        (transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search }))
+        (do
+          warning
+            (isNothing baseName || hasBaseName baseName to)
+            ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
+             <> un URL to <> """ to begin with: """ <> (maybe "" (un URL) baseName))
+          transformState this (_ { hash = loc.hash, pathname = loc.pathname, search = loc.search }))
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript
