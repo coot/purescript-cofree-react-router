@@ -1,5 +1,8 @@
 module React.Router.Types 
-  ( RouterConfig(RouterConfig)
+  ( class RoutePropsClass
+  , idLens
+  , mkProps
+  , RouterConfig(RouterConfig)
   , IndexRoute(IndexRoute)
   , Route(Route, OpenRoute)
   , RouteClass
@@ -11,6 +14,8 @@ module React.Router.Types
   , _id
   , _url
   , _cls
+
+  , Leaf(..)
   ) where
 
 import Prelude
@@ -18,15 +23,30 @@ import Prelude
 import Control.Comonad.Cofree ((:<), Cofree)
 import DOM.HTML.History (URL)
 import Data.Lens (Lens', lens)
-import Data.List (List)
+import Data.List (List(..), (:))
 import Data.Map (Map)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested (type (/\), (/\))
 import React (ReactClass)
-import React.Router.Class (class RoutePropsClass)
 import Routing.Match (Match) as R
 import Routing.Types (Route) as R
+import Unsafe.Reference (unsafeRefEq)
+
+newtype Leaf arg = Leaf { url :: R.Route, arg :: arg }
+
+derive instance eqLeaf :: Eq arg => Eq (Leaf arg)
+
+-- | The `RoutePropsClass` type class let one extend the properties passed to
+-- | each `RouteClass` react class component.  There is one instance
+-- | `RouteProps` defined in the `React.Router.Type` module.
+-- | The `mkProps` member function receives the name of the route and an
+-- | nonempty array of args read from the url.  You can use
+-- | `React.Router.Utils.last` function to get the last element of the array
+-- | with arguments obtained from the corrsponding url part.
+class RoutePropsClass props arg | props -> arg where
+  idLens :: Lens' (props arg) String
+  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List (Leaf arg)) -> props arg
 
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
@@ -43,8 +63,26 @@ newtype RouteProps arg = RouteProps
   -- | tail of the route params, this complements the information from `args`.
   -- | It has the information about all mounted children.  You can use
   -- | `React.Router.Utils.findLocation` to query it.
-  , tail :: List (Cofree List {url :: R.Route, arg ::  arg})
+  , tail :: List (Cofree List (Leaf arg))
   }
+
+derive instance eqRouteProps :: Eq arg => Eq (RouteProps arg)
+
+unsafeShallowRoutePropsRefEq :: forall arg. Eq arg => RouteProps arg -> RouteProps arg -> Boolean
+unsafeShallowRoutePropsRefEq (RouteProps a) (RouteProps b)
+   = a.id == b.id
+  && a.arg == b.arg
+  && a.args == b.args
+  && a.query == b.query
+  && unsafeListRefEq a.tail b.tail
+
+  where
+  unsafeListRefEq :: forall a. List a -> List a -> Boolean
+  unsafeListRefEq Nil Nil = true
+  unsafeListRefEq _ Nil = false
+  unsafeListRefEq Nil _ = false
+  unsafeListRefEq (c:cs) (d:ds) = if not $ c `unsafeRefEq` d then false else unsafeListRefEq cs ds
+
 
 -- | lens to get the id of route properties
 -- | ```purescript
@@ -52,11 +90,11 @@ newtype RouteProps arg = RouteProps
 -- |      props <- getProps this
 -- |      let id = view idLens props
 -- | ```
-idLens :: forall arg. Lens' (RouteProps arg) String
-idLens = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (rp { id = id_ }))
+_propsId :: forall arg. Lens' (RouteProps arg) String
+_propsId = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps (rp { id = id_ }))
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
-  idLens = idLens
+  idLens = _propsId
   mkProps name arg args query tail = RouteProps { id: name, arg, args, query, tail }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
@@ -112,15 +150,15 @@ instance showRoute :: Show (Route props arg) where
 -- | ```
 type Router props arg =
     (RoutePropsClass props arg)
-  => Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  => Cofree List ((Route props arg) /\ (Maybe (IndexRoute props arg)))
 
 withoutIndex
   :: forall props arg
    . (RoutePropsClass props arg)
   => Route props arg
-  -> List (Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg))))
-  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
-withoutIndex r rs = Tuple r Nothing :< rs
+  -> List (Cofree List ((Route props arg) /\ (Maybe (IndexRoute props arg))))
+  -> Cofree List ((Route props arg) /\ (Maybe (IndexRoute props arg)))
+withoutIndex r rs = r /\ Nothing :< rs
 
 -- | `:+` lets define routes without index route
 infixr 5 withoutIndex as :+

@@ -29,7 +29,7 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (un)
 import Data.String as S
 import Data.Tuple (Tuple(Tuple), fst, snd)
-import React.Router.Types (RouteProps(..))
+import React.Router.Types (Leaf(..), RouteProps(..))
 import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
@@ -144,8 +144,8 @@ mountedLocationsRelative
   -> List (List arg)
 mountedLocationsRelative (RouteProps { tail: ws }) = concatMap (foldr fn (Nil : Nil)) ws
   where
-    fn :: { arg :: arg, url :: R.Route } -> List (List arg) -> List (List arg)
-    fn { arg } l = (arg : _) `map` l
+    fn :: Leaf arg -> List (List arg) -> List (List arg)
+    fn (Leaf { arg }) l = (arg : _) `map` l
 
 -- | Like `mountedLocationsRelative` but the list full paths instead of
 -- | relative ones.

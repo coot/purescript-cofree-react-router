@@ -34,9 +34,8 @@ import Prelude (Unit, bind, const, discard, pure, show, unit, unless, void, ($),
 import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', writeState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
-import React.Router.Class (class RoutePropsClass)
 import React.Router.Routing (runRouter)
-import React.Router.Types (IndexRoute, Route, RouterConfig(RouterConfig))
+import React.Router.Types (class RoutePropsClass, IndexRoute, Route, RouterConfig(RouterConfig))
 import React.Router.Utils (hasBaseName, joinUrls, stripBaseName, warning)
 
 -- | RouterState type

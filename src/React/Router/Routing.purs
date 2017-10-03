@@ -1,6 +1,7 @@
 module React.Router.Routing
   ( runRouter
   , matchRouter
+  , LeafVal(..)
   ) where
 
 import Prelude
@@ -23,33 +24,32 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
 import React (ReactElement, createElement)
-import React.Router.Class (class RoutePropsClass, mkProps, idLens)
-import React.Router.Types (IndexRoute(IndexRoute), Route(..), Router, _cls, _id, _url)
+import React.Router.Types (class RoutePropsClass, mkProps, idLens, Leaf, IndexRoute(IndexRoute), Route(..), Router, _cls, _id, _url)
 import Routing.Match (Match(..))
 import Routing.Match.Class (end, lit, params)
 import Routing.Parser (parse)
 import Routing.Types (Route, RoutePart(..)) as R
 import Unsafe.Coerce (unsafeCoerce)
 
-type LeafVal props arg =
+newtype LeafVal props arg = LeafVal
   { url :: R.Route
   , arg :: arg
   , route :: Route props arg
-  , isOpen :: Boolean
   , indexRoute :: Maybe (IndexRoute props arg)
+  , isOpen :: Boolean
   }
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
 shake
-  :: forall a arg
-   . Cofree List (Maybe {url :: R.Route, arg :: arg, isOpen :: Boolean | a})
-  -> Maybe (Cofree List {url :: R.Route, arg :: arg, isOpen :: Boolean | a})
+  :: forall props arg
+   . Cofree List (Maybe (LeafVal props arg))
+  -> Maybe (Cofree List (LeafVal props arg))
 shake cof = case head cof of
     Nothing -> Nothing
-    Just r ->
+    Just r@(LeafVal { url }) ->
       let tail_ = go (tail cof)
-      in if not (null tail_) || matchEnd r.url
+      in if not (null tail_) || matchEnd url
            then Just (r :< tail_)
            else Nothing
   where
@@ -60,16 +60,16 @@ shake cof = case head cof of
         Match fn -> unV (const false) (const true) $ fn url
 
     go
-      :: List (Cofree List (Maybe {url :: R.Route, arg :: arg, isOpen :: Boolean | a }))
-      -> List (Cofree List {url :: R.Route, arg :: arg, isOpen :: Boolean | a})
+      :: List (Cofree List (Maybe (LeafVal props arg)))
+      -> List (Cofree List (LeafVal props arg))
     go cofs = foldr f Nil cofs
-      where 
+      where
         f cof_ cofs_ =
           case head cof_ of
             Nothing -> cofs_
-            Just cofHead@{ isOpen } ->
+            Just cofHead@LeafVal { isOpen, url } ->
               let tail_ = go $ tail cof_
-              in if not isOpen `implies` (null tail_ `implies` matchEnd cofHead.url)
+              in if not isOpen `implies` (null tail_ `implies` matchEnd url)
                 then (cofHead :< tail_) : cofs_
                 else cofs_
 
@@ -95,7 +95,7 @@ matchRouter url_ router = shake $ go url_ router
                     Route _ _ _ -> false
                     OpenRoute _ _ _ -> true
               in case unV Left Right (mFn url') of
-                Right (Tuple url arg) -> Just {url, arg, route, indexRoute, isOpen} :< map (go url) (tail r)
+                Right (Tuple url arg) -> Just (LeafVal {url, arg, route, indexRoute, isOpen}) :< map (go url) (tail r)
                 Left err -> Nothing :< Nil
 
 -- | Main entry point for running `Router`, it returns `ReactElement` that can
@@ -128,9 +128,9 @@ runRouter (URL urlStr) router =
       :: LeafVal props arg
       -> List (Cofree List (LeafVal props arg))
       -> State (List arg) ReactElement
-    asElement {arg, route, indexRoute} Nil = do
+    asElement (LeafVal {arg, route, indexRoute}) Nil = do
       args <- get
-      let 
+      let
         id_ = _id route
         cls = _cls route
 
@@ -139,7 +139,7 @@ runRouter (URL urlStr) router =
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
-    asElement {arg, route, indexRoute} cofs = 
+    asElement (LeafVal {arg, route, indexRoute}) cofs =
       let id_ = _id route
           cls = _cls route
       in do
@@ -148,5 +148,6 @@ runRouter (URL urlStr) router =
         children <- sequence $ createRouteElement <$> cofs
         pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) (toUnfoldable children)
 
-    coerce :: forall r. List (Cofree List {url :: R.Route, arg :: arg | r}) -> List (Cofree List {url :: R.Route, arg :: arg })
+    -- unsafe optimization trick
+    coerce :: List (Cofree List (LeafVal props arg)) -> List (Cofree List (Leaf arg))
     coerce = unsafeCoerce
