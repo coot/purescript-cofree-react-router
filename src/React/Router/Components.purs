@@ -1,6 +1,6 @@
 module React.Router.Components
   ( Location
-  , BrowserRouter
+  , BrowserRouter(..)
   , browserRouter
   , browserRouterClass
   , LinkProps(LinkProps)
