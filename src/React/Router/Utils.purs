@@ -76,12 +76,12 @@ showLocation t = foldl (\url -> joinUrls url <<< URL <<< show) (URL "") t
 -- | querying about children that are mounted under a given component.
 findLocation
   :: forall arg a
-   . ({ arg :: arg, url :: R.Route } -> Maybe a)
-  -> List (Cofree List { arg :: arg, url :: R.Route })
-  -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route})))
+   . (Leaf arg -> Maybe a)
+  -> List (Cofree List (Leaf arg))
+  -> Maybe (Tuple a (List (Cofree List (Leaf arg))))
 findLocation fn = un First <<< foldMap go
   where
-    go :: Cofree List { arg :: arg, url :: R.Route } -> First (Tuple a (List (Cofree List { arg :: arg, url :: R.Route })))
+    go :: Cofree List (Leaf arg) -> First (Tuple a (List (Cofree List (Leaf arg))))
     go w = First $ (\a -> Tuple a (tail w)) <$> (fn (head w))
 
 -- | Compose two `findLocation _` functions.  Note that this composition runs
@@ -113,10 +113,10 @@ findLocation fn = un First <<< foldMap go
 -- | ```
 composeFL
   :: forall arg a b
-   . (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route}))))
-  -> (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple b (List (Cofree List { arg :: arg, url :: R.Route}))))
-  -> List (Cofree List { arg :: arg, url :: R.Route })
-  -> Maybe (Tuple (Tuple a (Maybe b)) (List (Cofree List { arg :: arg, url :: R.Route })))
+   . (List (Cofree List (Leaf arg)) -> Maybe (Tuple a (List (Cofree List (Leaf arg)))))
+  -> (List (Cofree List (Leaf arg)) -> Maybe (Tuple b (List (Cofree List (Leaf arg)))))
+  -> List (Cofree List (Leaf arg))
+  -> Maybe (Tuple (Tuple a (Maybe b)) (List (Cofree List (Leaf arg))))
 composeFL f g ws = shuffle <$> ((map g) <$> f ws)
   where
     shuffle :: forall x y z. Monoid z => Tuple x (Maybe (Tuple y z)) -> Tuple (Tuple x (Maybe y)) z
@@ -126,10 +126,10 @@ infixr 7 composeFL as :>>>
 
 composeFLFlipped
   :: forall arg a b
-   . (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple a (List (Cofree List { arg :: arg, url :: R.Route}))))
-  -> (List (Cofree List { arg :: arg, url :: R.Route }) -> Maybe (Tuple b (List (Cofree List { arg :: arg, url :: R.Route}))))
-  -> List (Cofree List { arg :: arg, url :: R.Route })
-  -> Maybe (Tuple (Tuple b (Maybe a)) (List (Cofree List { arg :: arg, url :: R.Route })))
+   . (List (Cofree List (Leaf arg)) -> Maybe (Tuple a (List (Cofree List (Leaf arg)))))
+  -> (List (Cofree List (Leaf arg)) -> Maybe (Tuple b (List (Cofree List (Leaf arg)))))
+  -> List (Cofree List (Leaf arg))
+  -> Maybe (Tuple (Tuple b (Maybe a)) (List (Cofree List (Leaf arg))))
 composeFLFlipped = flip composeFL
 
 infixr 7 composeFLFlipped as :<<<
