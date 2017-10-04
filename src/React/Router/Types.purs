@@ -36,6 +36,7 @@ import Unsafe.Reference (unsafeRefEq)
 newtype Leaf arg = Leaf { url :: R.Route, arg :: arg }
 
 derive instance eqLeaf :: Eq arg => Eq (Leaf arg)
+derive instance newtypeLeaf :: Newtype (Leaf arg) _
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
 -- | each `RouteClass` react class component.  There is one instance

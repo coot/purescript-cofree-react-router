@@ -19,6 +19,7 @@ import Data.List (List(..), null, toUnfoldable, (:))
 import Data.Map (Map) as M
 import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
+import Data.Newtype (class Newtype)
 import Data.Traversable (sequence)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (unV)
@@ -38,6 +39,8 @@ newtype LeafVal props arg = LeafVal
   , indexRoute :: Maybe (IndexRoute props arg)
   , isOpen :: Boolean
   }
+
+derive instance newtypeLeafVal :: Newtype (LeafVal props arg) _
 
 -- | Remove all branches that are annotated with `Nothing`
 -- | it also elminates not fully consumed URLs
