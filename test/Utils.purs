@@ -10,6 +10,7 @@ import Data.List (List(..), (:))
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (un)
 import Data.Tuple (Tuple(..))
+import React.Router (RouteLeaf(..))
 import React.Router.Utils (findLocation, hasBaseName, joinUrls, showLocation, stripBaseName, (:<<<), (:>>>))
 import Test.Unit (TestSuite, failure, suite, test)
 import Test.Unit.Assert (assert)
@@ -62,15 +63,15 @@ testSuite = suite "Utils" do
 
   test "findLocation & composeFL" do
     let ws =
-          ({ arg: Left "left", url: Nil } :<
-            (({ arg: Right "right", url: Nil } :< Nil)
+          (RouteLeaf { arg: Left "left", url: Nil } :<
+            ((RouteLeaf { arg: Right "right", url: Nil } :< Nil)
             : Nil))
           : Nil
-        _left { arg: Left x } = Just x
-        _left { arg: Right _ } = Nothing
+        _left (RouteLeaf { arg: Left x }) = Just x
+        _left (RouteLeaf { arg: Right _ }) = Nothing
 
-        _right { arg: Left _ } = Nothing
-        _right { arg: Right x } = Just x
+        _right (RouteLeaf { arg: Left _ }) = Nothing
+        _right (RouteLeaf { arg: Right x }) = Just x
 
     case (findLocation _right :<<< findLocation _left) ws of
       Just (Tuple (Tuple "left" (Just "right")) _) -> pure unit

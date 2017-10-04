@@ -25,7 +25,7 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (unV)
 import Global (decodeURIComponent)
 import React (ReactElement, createElement)
-import React.Router.Types (class RoutePropsClass, mkProps, idLens, Leaf, IndexRoute(IndexRoute), Route(..), Router, _cls, _id, _url)
+import React.Router.Types (class RoutePropsClass, mkProps, idLens, RouteLeaf, IndexRoute(IndexRoute), Route(..), Router, _cls, _id, _url)
 import Routing.Match (Match(..))
 import Routing.Match.Class (end, lit, params)
 import Routing.Parser (parse)
@@ -152,5 +152,5 @@ runRouter (URL urlStr) router =
         pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) (toUnfoldable children)
 
     -- unsafe optimization trick
-    coerce :: List (Cofree List (LeafVal props arg)) -> List (Cofree List (Leaf arg))
+    coerce :: List (Cofree List (LeafVal props arg)) -> List (Cofree List (RouteLeaf arg))
     coerce = unsafeCoerce

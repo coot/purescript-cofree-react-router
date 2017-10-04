@@ -29,7 +29,7 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (un)
 import Data.String as S
 import Data.Tuple (Tuple(Tuple), fst, snd)
-import React.Router.Types (Leaf(..), RouteProps(..))
+import React.Router.Types (RouteLeaf(..), RouteProps(..))
 import Routing.Types (Route, RoutePart(..)) as R
 
 -- | Print `Routing.Types.Route` as a string,  useful for debugging.
@@ -76,12 +76,12 @@ showLocation t = foldl (\url -> joinUrls url <<< URL <<< show) (URL "") t
 -- | querying about children that are mounted under a given component.
 findLocation
   :: forall arg a
-   . (Leaf arg -> Maybe a)
-  -> List (Cofree List (Leaf arg))
-  -> Maybe (Tuple a (List (Cofree List (Leaf arg))))
+   . (RouteLeaf arg -> Maybe a)
+  -> List (Cofree List (RouteLeaf arg))
+  -> Maybe (Tuple a (List (Cofree List (RouteLeaf arg))))
 findLocation fn = un First <<< foldMap go
   where
-    go :: Cofree List (Leaf arg) -> First (Tuple a (List (Cofree List (Leaf arg))))
+    go :: Cofree List (RouteLeaf arg) -> First (Tuple a (List (Cofree List (RouteLeaf arg))))
     go w = First $ (\a -> Tuple a (tail w)) <$> (fn (head w))
 
 -- | Compose two `findLocation _` functions.  Note that this composition runs
@@ -113,10 +113,10 @@ findLocation fn = un First <<< foldMap go
 -- | ```
 composeFL
   :: forall arg a b
-   . (List (Cofree List (Leaf arg)) -> Maybe (Tuple a (List (Cofree List (Leaf arg)))))
-  -> (List (Cofree List (Leaf arg)) -> Maybe (Tuple b (List (Cofree List (Leaf arg)))))
-  -> List (Cofree List (Leaf arg))
-  -> Maybe (Tuple (Tuple a (Maybe b)) (List (Cofree List (Leaf arg))))
+   . (List (Cofree List (RouteLeaf arg)) -> Maybe (Tuple a (List (Cofree List (RouteLeaf arg)))))
+  -> (List (Cofree List (RouteLeaf arg)) -> Maybe (Tuple b (List (Cofree List (RouteLeaf arg)))))
+  -> List (Cofree List (RouteLeaf arg))
+  -> Maybe (Tuple (Tuple a (Maybe b)) (List (Cofree List (RouteLeaf arg))))
 composeFL f g ws = shuffle <$> ((map g) <$> f ws)
   where
     shuffle :: forall x y z. Monoid z => Tuple x (Maybe (Tuple y z)) -> Tuple (Tuple x (Maybe y)) z
@@ -126,10 +126,10 @@ infixr 7 composeFL as :>>>
 
 composeFLFlipped
   :: forall arg a b
-   . (List (Cofree List (Leaf arg)) -> Maybe (Tuple a (List (Cofree List (Leaf arg)))))
-  -> (List (Cofree List (Leaf arg)) -> Maybe (Tuple b (List (Cofree List (Leaf arg)))))
-  -> List (Cofree List (Leaf arg))
-  -> Maybe (Tuple (Tuple b (Maybe a)) (List (Cofree List (Leaf arg))))
+   . (List (Cofree List (RouteLeaf arg)) -> Maybe (Tuple a (List (Cofree List (RouteLeaf arg)))))
+  -> (List (Cofree List (RouteLeaf arg)) -> Maybe (Tuple b (List (Cofree List (RouteLeaf arg)))))
+  -> List (Cofree List (RouteLeaf arg))
+  -> Maybe (Tuple (Tuple b (Maybe a)) (List (Cofree List (RouteLeaf arg))))
 composeFLFlipped = flip composeFL
 
 infixr 7 composeFLFlipped as :<<<
@@ -144,8 +144,8 @@ mountedLocationsRelative
   -> List (List arg)
 mountedLocationsRelative (RouteProps { tail: ws }) = concatMap (foldr fn (Nil : Nil)) ws
   where
-    fn :: Leaf arg -> List (List arg) -> List (List arg)
-    fn (Leaf { arg }) l = (arg : _) `map` l
+    fn :: RouteLeaf arg -> List (List arg) -> List (List arg)
+    fn (RouteLeaf { arg }) l = (arg : _) `map` l
 
 -- | Like `mountedLocationsRelative` but the list full paths instead of
 -- | relative ones.

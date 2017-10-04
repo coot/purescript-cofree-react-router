@@ -15,7 +15,7 @@ module React.Router.Types
   , _url
   , _cls
 
-  , Leaf(..)
+  , RouteLeaf(..)
   ) where
 
 import Prelude
@@ -33,10 +33,10 @@ import Routing.Match (Match) as R
 import Routing.Types (Route) as R
 import Unsafe.Reference (unsafeRefEq)
 
-newtype Leaf arg = Leaf { url :: R.Route, arg :: arg }
+newtype RouteLeaf arg = RouteLeaf { url :: R.Route, arg :: arg }
 
-derive instance eqLeaf :: Eq arg => Eq (Leaf arg)
-derive instance newtypeLeaf :: Newtype (Leaf arg) _
+derive instance eqLeaf :: Eq arg => Eq (RouteLeaf arg)
+derive instance newtypeLeaf :: Newtype (RouteLeaf arg) _
 
 -- | The `RoutePropsClass` type class let one extend the properties passed to
 -- | each `RouteClass` react class component.  There is one instance
@@ -47,7 +47,7 @@ derive instance newtypeLeaf :: Newtype (Leaf arg) _
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props arg | props -> arg where
   idLens :: Lens' (props arg) String
-  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List (Leaf arg)) -> props arg
+  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List (RouteLeaf arg)) -> props arg
 
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
@@ -64,7 +64,7 @@ newtype RouteProps arg = RouteProps
   -- | tail of the route params, this complements the information from `args`.
   -- | It has the information about all mounted children.  You can use
   -- | `React.Router.Utils.findLocation` to query it.
-  , tail :: List (Cofree List (Leaf arg))
+  , tail :: List (Cofree List (RouteLeaf arg))
   }
 
 derive instance eqRouteProps :: Eq arg => Eq (RouteProps arg)
