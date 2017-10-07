@@ -47,7 +47,14 @@ derive instance newtypeLeaf :: Newtype (RouteLeaf arg) _
 -- | with arguments obtained from the corrsponding url part.
 class RoutePropsClass props arg | props -> arg where
   idLens :: Lens' (props arg) String
-  mkProps :: String -> arg -> List arg -> Map String String -> List (Cofree List (RouteLeaf arg)) -> props arg
+  mkProps
+    :: String
+    -> arg
+    -> List arg
+    -> Map String String
+    -> List (Cofree List (RouteLeaf arg))
+    -> R.Route
+    -> props arg
 
 -- | `RouteProps` type keeps track route related data: id, currently matched
 -- | argument and array of arguments - if the route is nested this will hold
@@ -65,6 +72,8 @@ newtype RouteProps arg = RouteProps
   -- | It has the information about all mounted children.  You can use
   -- | `React.Router.Utils.findLocation` to query it.
   , tail :: List (Cofree List (RouteLeaf arg))
+  -- | the URL tail (what is left after the current mount point)
+  , url :: R.Route
   }
 
 derive instance eqRouteProps :: Eq arg => Eq (RouteProps arg)
@@ -96,7 +105,7 @@ _propsId = lens (\(RouteProps rp) -> rp.id) (\(RouteProps rp) id_ -> RouteProps 
 
 instance routePropsRoutePropsClass :: RoutePropsClass RouteProps arg where
   idLens = _propsId
-  mkProps name arg args query tail = RouteProps { id: name, arg, args, query, tail }
+  mkProps name arg args query tail url = RouteProps { id: name, arg, args, query, tail, url }
 
 derive instance newtypeRouteProps :: Newtype (RouteProps arg) _
 

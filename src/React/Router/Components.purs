@@ -30,7 +30,7 @@ import Data.List (List)
 import Data.Maybe (Maybe(..), fromMaybe, isNothing, maybe, maybe')
 import Data.Newtype (un)
 import Data.Tuple (Tuple)
-import Prelude (Unit, bind, const, discard, pure, show, unit, unless, void, ($), (<$>), (<<<), (<>), (>>=), (||))
+import Prelude (Unit, bind, const, discard, pure, show, unit, void, ($), (<$>), (<<<), (<>), (>>=), (||))
 import React (ReactClass, ReactElement, ReactProps, ReactRefs, ReactSpec, ReactState, ReadOnly, ReadWrite, createClass, createElement, getChildren, getProps, preventDefault, readState, spec, spec', writeState)
 import React.DOM (a, div')
 import React.DOM.Props (Props, href, onClick)
@@ -101,20 +101,16 @@ browserRouter = (spec' initialState render) { displayName = "BrowserRouter", com
       window >>= addEventListener popstate (eventListener $ handler this) false <<< windowToEventTarget
 
     handler this ev = do
-      BrowserRouter { config: RouterConfig { baseName, ignore } } <- getProps this
+      BrowserRouter { config: RouterConfig { baseName } } <- getProps this
       cur <- readState this
       loc' <- getLocation
       let to' = runLocation loc'
           loc = stripBaseNameL baseName loc'
-          to = runLocation loc
-          from = runLocation cur
-      unless (ignore { to, from })
-        (do
-          warning
-            (isNothing baseName || hasBaseName baseName to')
-            ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
-             <> un URL to' <> """ to begin with: """ <> (maybe "" (un URL) baseName))
-          void $ writeState this loc)
+      warning
+        (isNothing baseName || hasBaseName baseName to')
+        ("""You are using baseName on a page which URL path does not begin with.  Expecting path: """
+         <> un URL to' <> " to begin with: " <> (maybe "" (un URL) baseName))
+      void $ writeState this loc
 
 -- | React class for the `browerRouter` element.  Use it to init your application.
 -- | ```purescript

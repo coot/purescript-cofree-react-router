@@ -1,5 +1,6 @@
 module React.Router.Routing
   ( runRouter
+  , runRouter'
   , matchRouter
   , LeafVal(..)
   ) where
@@ -37,7 +38,7 @@ newtype LeafVal props arg = LeafVal
   , arg :: arg
   , route :: Route props arg
   , indexRoute :: Maybe (IndexRoute props arg)
-  , isOpen :: Boolean
+  , open :: Boolean
   }
 
 derive instance newtypeLeafVal :: Newtype (LeafVal props arg) _
@@ -70,9 +71,9 @@ shake cof = case head cof of
         f cof_ cofs_ =
           case head cof_ of
             Nothing -> cofs_
-            Just cofHead@LeafVal { isOpen, url } ->
+            Just cofHead@LeafVal { open, url } ->
               let tail_ = go $ tail cof_
-              in if not isOpen `implies` (null tail_ `implies` matchEnd url)
+              in if not open `implies` (null tail_ `implies` matchEnd url)
                 then (cofHead :< tail_) : cofs_
                 else cofs_
 
@@ -94,28 +95,25 @@ matchRouter url_ router = shake $ go url_ router
         Tuple route indexRoute ->
           case _url route of
             Match mFn ->
-              let isOpen = case route of
+              let open = case route of
                     Route _ _ _ -> false
                     OpenRoute _ _ _ -> true
               in case unV Left Right (mFn url') of
-                Right (Tuple url arg) -> Just (LeafVal {url, arg, route, indexRoute, isOpen}) :< map (go url) (tail r)
+                Right (Tuple url arg) -> Just (LeafVal {url, arg, route, indexRoute, open}) :< map (go url) (tail r)
                 Left err -> Nothing :< Nil
 
--- | Main entry point for running `Router`, it returns `ReactElement` that can
--- | be injected into React vDOM.
-runRouter
+runRouter'
   :: forall props arg
    . (RoutePropsClass props arg)
-  => URL
+  => R.Route
   -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
   -> Maybe ReactElement
-runRouter (URL urlStr) router =
-  evalState (sequence $ createRouteElement <$> matchRouter url_ router) Nil
+runRouter' u router =
+  evalState (sequence $ createRouteElement <$> matchRouter u router) Nil
     where
-    url_ = parse decodeURIComponent urlStr
 
     query :: M.Map String String
-    query = foldMap toMap url_
+    query = foldMap toMap u
 
     toMap :: R.RoutePart -> M.Map String String
     toMap (R.Path _) = mempty
@@ -131,26 +129,36 @@ runRouter (URL urlStr) router =
       :: LeafVal props arg
       -> List (Cofree List (LeafVal props arg))
       -> State (List arg) ReactElement
-    asElement (LeafVal {arg, route, indexRoute}) Nil = do
+    asElement (LeafVal {url, arg, route, indexRoute}) Nil = do
       args <- get
       let
         id_ = _id route
         cls = _cls route
 
         props :: props arg
-        props = mkProps id_ arg (arg : args) query Nil
+        props = mkProps id_ arg (arg : args) query Nil url
         index :: Array ReactElement
         index = maybe [] (\(IndexRoute id idxCls) -> A.cons (createElement idxCls (set idLens id props) []) []) indexRoute
       pure $ createElement cls props index
-    asElement (LeafVal {arg, route, indexRoute}) cofs =
+    asElement (LeafVal {arg, route, indexRoute, url}) cofs =
       let id_ = _id route
           cls = _cls route
       in do
         modify (arg : _)
         args <- get
         children <- sequence $ createRouteElement <$> cofs
-        pure $ createElement cls (mkProps id_ arg args query (coerce cofs)) (toUnfoldable children)
+        pure $ createElement cls (mkProps id_ arg args query (coerce cofs) url) (toUnfoldable children)
 
     -- unsafe optimization trick
     coerce :: List (Cofree List (LeafVal props arg)) -> List (Cofree List (RouteLeaf arg))
     coerce = unsafeCoerce
+
+-- | Main entry point for running `Router`, it returns `ReactElement` that can
+-- | be injected into React vDOM.
+runRouter
+  :: forall props arg
+   . (RoutePropsClass props arg)
+  => URL
+  -> Cofree List (Tuple (Route props arg) (Maybe (IndexRoute props arg)))
+  -> Maybe ReactElement
+runRouter (URL url) = runRouter' (parse decodeURIComponent url)
