@@ -5,6 +5,7 @@ module React.Router.Components
   , browserRouterClass
   , LinkProps(LinkProps)
   , linkSpec
+  , linkClass
   , link
   , link'
   , goto
