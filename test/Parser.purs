@@ -3,14 +3,11 @@ module Test.Parser
 
 import Prelude
 
-import Data.Foldable (foldMap)
 import Data.List (List(..), zip, (:))
 import Data.List as L
 import Data.Map as M
-import Data.Maybe (Maybe(Nothing, Just))
+import Data.Maybe (Maybe(Nothing, Just), isJust)
 import Data.Monoid (mempty)
-import Data.Monoid.Disj (Disj(..))
-import Data.Newtype (ala)
 import Data.Traversable (sequence_)
 import Data.Tuple (Tuple(..))
 import Routing.Parser (parse)
@@ -22,7 +19,7 @@ testSuite :: forall eff. TestSuite eff
 testSuite =
   suite "Parser" do
     test "parse with query"
-      let urls = "/home?a=1&b=2" : "/home/10/?a=1&b=2" : "/home?a=1?b=2" : Nil
+      let urls = "/home?a=1&b=2" : "/home/10/?a=1&b=2" : Nil
           lastIsQuery rs = case L.last rs of
                              Just (Query q) -> true
                              _ -> false
@@ -34,7 +31,7 @@ testSuite =
       in sequence_ (_test <$> zipped)
 
     test "parse query"
-      let urls = "/home?a=1&b=2" : "/home?a=1&b=2" : "/home?c=1?a=1&b=2" : Nil
+      let urls = "/home?a=1&b=2" : "/home?a=1&b=2" : Nil
           getQuery rs =
             case L.last rs of
               (Just (Query q)) -> q
@@ -47,19 +44,13 @@ testSuite =
       let url = "/home?a=1&b=2/"
           rs = parse id url
 
-          lastIsEmpty =
+          lastQuery =
             case L.last rs of
-              Just (Path p) -> p == ""
-              Just _ -> false
-              Nothing -> false
-
-          containsQuery = ala Disj foldMap
-            $ (case _ of
-                Path _ -> false
-                Query _ -> true) <$> rs
+              Just (Query a) -> Just a
+              _ -> Nothing
 
       in do
-        assert "unexpected length" $ L.length rs == 4
-        assert "last path part is not empty string" $ lastIsEmpty
-        assert "should contain query" $ containsQuery
-
+        assert ("unexpected length: " <> (show $ L.length rs)) $ L.length rs == 3
+        assert "last path part is not empty string" $ isJust lastQuery
+        let a = lastQuery >>= M.lookup "b"
+        assert ("b is equal `2/`: " <> show a) $ a == Just "2/"
