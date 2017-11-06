@@ -3,10 +3,16 @@
   "authors": [
     "Marcin Szamotulski <coot@riseup.net>"
   ],
-  "description": "",
+  "description": "Stateless react router written in PureScript.",
   "main": "",
   "license": "MIT",
   "homepage": "",
+  "keywords": [
+    "router", 
+    "react",
+    "cofree",
+    "purescript"
+  ],
   "ignore": [
     "**/.*",
     "node_modules",
