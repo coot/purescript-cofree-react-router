@@ -93,11 +93,13 @@ exports._getProp = function(propName) {
 exports._eqCofree = function eqCofree (eq) {
   return function _eqCofree(cofA) {
     return function (cofB) {
-      if (!eq(cofA.value0)(cofB.value0))
+      var cofA_ = cofA.thunk()
+      var cofB_ = cofB.thunk()
+      if (!eq(cofA_.value0)(cofB_.value0))
         return false
 
-      var tailA = cofA.value1.thunk()
-      var tailB = cofB.value1.thunk()
+      var tailA = cofA_.value1
+      var tailB = cofB_.value1
       if (tailA.length != tailB.length)
         return false
 
@@ -116,9 +118,10 @@ exports._eqCofree = function eqCofree (eq) {
 exports._showCofree = function showCofree(show) {
   return function (cof) {
     return (function _show(cof, level) {
+      var cof_ = cof.thunk()
       var indent = Array.apply(Array, Array(level)).map(function(el) {return "  "}).join("")
-      var str = show(cof.value0) + "\n" + indent + "  ["
-      var tail = cof.value1.thunk().forEach(function(cof_, idx) {str = str + (idx === 0 ? " " : ("\n" + indent + "  , ")) +  _show(cof_, level + 1)})
+      var str = show(cof_.value0) + "\n" + indent + "  ["
+      var tail = cof_.value1.forEach(function(cof_, idx) {str = str + (idx === 0 ? " " : ("\n" + indent + "  , ")) +  _show(cof_, level + 1)})
       return str + "\n" + indent + "  ]"
     })(cof, 0)
   }

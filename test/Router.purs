@@ -46,7 +46,7 @@ indexRouteClass =
      in createClass (clsSpec { displayName = "indexRouteClass" })
 
 idTree
-  :: forall args r
+  :: forall args
    . Cofree List (LeafVal RouteProps args)
   -> Cofree List {id :: String, indexId :: Maybe String}
 idTree = map (\(LeafVal {url, route, indexRoute}) -> {id: _id route, indexId: maybe Nothing (\(IndexRoute id _) -> Just id) indexRoute})
