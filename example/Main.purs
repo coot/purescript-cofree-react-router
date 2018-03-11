@@ -18,7 +18,7 @@ import Data.Tuple (Tuple(..))
 import Partial.Unsafe (unsafePartial)
 import React (ReactClass, ReactElement, createClass, createElement, getChildren, getProps, spec)
 import React.DOM (div', h1', h2', h3', h4', text)
-import React.Router (IndexRoute(..), Route(..), RouteProps(..), Router, browserRouterClass, defaultConfig, link', (:+))
+import React.Router (IndexRoute(..), Route(..), RouteProps(..), Router, browserRouterClass, defaultConfig, link', (:+), BrowserRouter(..))
 import React.Router.Utils (showLocation)
 import ReactDOM (render)
 import Routing.Match.Class (int, lit, str)
@@ -116,7 +116,10 @@ router =
     : Nil
 
 app :: ReactElement
-app = createElement (browserRouterClass defaultConfig) {router, notFound: Nothing} []
+app = createElement browserRouterClass (BrowserRouter {router: router
+                                                        , notFound: Nothing
+                                                        , config: defaultConfig
+                                                        }) []
 
 main :: forall e. Eff (dom :: DOM | e) Unit
 main = void $ elm >>= render app
